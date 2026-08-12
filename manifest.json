@@ -1,0 +1,10 @@
+{
+  "name": "KINGS • Gestão da Barbearia",
+  "short_name": "KINGS",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#111111",
+  "theme_color": "#111111",
+  "lang": "pt-BR",
+  "icons": []
+}
