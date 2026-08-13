@@ -47,3 +47,9 @@ Antes de uma atualização importante, use **Configurações → Exportar backup
 Os cortes e configurações ficam armazenados localmente no aparelho. Eles não são sincronizados automaticamente entre iPhones ou navegadores.
 
 Não apague os dados do Safari nem troque o domínio sem fazer backup.
+
+## Correção desta versão
+- Botão de Configurações abre a tela diretamente.
+- Atalho de Configurações visível na tela inicial.
+- Logo KINGS enviada pelo proprietário aplicada ao cabeçalho e aos ícones.
+- Service Worker atualizado para v6 para forçar a atualização dos arquivos.
