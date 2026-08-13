@@ -1,5 +1,15 @@
-KINGS - primeira versão gratuita
-- Abra index.html em um navegador para testar.
-- Os cortes ficam salvos no armazenamento do navegador do aparelho.
-- A versão atual reproduz as telas enviadas e já permite registrar cortes, clientes e fiado.
-- Para instalar como app no iPhone, o próximo passo é publicar estes arquivos em uma hospedagem HTTPS gratuita e adicionar à Tela de Início pelo Safari.
+KINGS v2 — versão para GitHub Pages
+
+Novidades:
+- Logo KINGS aplicada ao app e ícone do iPhone.
+- Tela Configurações.
+- Nome da barbearia editável.
+- Preços de Corte, Barba e Corte + Barba editáveis.
+- Metas diária e mensal salvas no aparelho.
+- Fiado pode ser marcado como pago.
+- Cortes podem ser excluídos.
+- Backup e restauração dos dados em JSON.
+- Histórico diário, semanal e mensal.
+- Dados permanecem no armazenamento local do navegador/aplicativo.
+
+Para atualizar seu app: substitua os arquivos do repositório GitHub pelos arquivos desta pasta.
