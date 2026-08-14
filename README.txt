@@ -1,19 +1,35 @@
-KINGS 9.2.1 — PACOTE CORRETO
+KINGS 9.2.1
+============
 
-Esta versão é baseada no KINGS 9 definitivo completo (não na versão simplificada anterior).
+Esta pasta é uma PWA substituta da versão anterior, com visual inspirado diretamente na imagem de referência enviada.
 
-Correções 9.2.1:
-- Mantém o layout completo, logo e funcionalidades do KINGS 9 definitivo.
-- Cache/service worker atualizado para kings-v9.2.1-20260814.
-- Limpa automaticamente caches antigos do KINGS.
-- Desregistra versões antigas ao detectar mudança de build.
-- Força atualização do index/app/estilos com query string 9.2.1.
-- Mantém deduplicação automática de cortes, clientes, receitas e despesas.
+Arquivos principais:
+- index.html
+- styles.css
+- app.js
+- manifest.webmanifest
+- sw.js
 
-SUBSTITUIÇÃO:
-1. Extraia TODOS os arquivos deste ZIP diretamente na raiz do site.
-2. Confirme que index.html, app.js, estilo.css, sw.js e service-worker.js estão na mesma pasta.
-3. Publique/substitua os arquivos no GitHub Pages.
-4. No iPhone, abra o endereço do site novamente. A própria aplicação remove o cache kings-* antigo e registra o novo service worker.
+Recursos:
+- Dashboard, Caixa, Receitas, Despesas, Clientes, Calendário, Relatórios, Categorias e Mais.
+- Cadastro de entradas, saídas, receitas, despesas e clientes.
+- Dados persistidos no localStorage.
+- Deduplicação automática para cortes, clientes, receitas, despesas e movimentações.
+- Botão para executar a limpeza de duplicados manualmente.
+- Backup JSON.
+- Service worker com cache versionado para reduzir o problema de carregar a versão antiga.
 
-IMPORTANTE: este ZIP substitui o pacote 9.2.1 simplificado anterior. O pacote correto tem logo.png, estilo.css, service-worker.js, sw.js, app.js e os demais arquivos do KINGS definitivo.
+PUBLICAÇÃO:
+1. Extraia todos os arquivos para a mesma pasta do site.
+2. Substitua os arquivos antigos.
+3. Publique o conteúdo.
+4. Abra o site no iPhone e recarregue.
+5. Se uma instalação PWA antiga continuar aparecendo, remova a instalação antiga da Tela de Início e abra o endereço novamente no Safari para instalar a nova versão.
+
+IMPORTANTE:
+A deduplicação considera:
+- Clientes: nome + telefone
+- Receitas: cliente + descrição + valor + data
+- Despesas: descrição + valor + categoria + data
+- Movimentações: tipo + descrição + valor + data
+- Cortes: cliente + valor + data + serviço

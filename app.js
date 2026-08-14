@@ -1,108 +1,170 @@
-const KEY='kings_cuts_v3', EXP='kings_expenses_v3', CFG='kings_cfg_v3', CLI='kings_clients_v1';
-let cuts=JSON.parse(localStorage.getItem(KEY)||'[]');
-let expenses=JSON.parse(localStorage.getItem(EXP)||'[]');
-let clients=JSON.parse(localStorage.getItem(CLI)||'[]');
-clients=[...new Set([...clients,...cuts.map(c=>c.client).filter(Boolean)])];
-let cfg=Object.assign({name:'KINGS',corte:40,barba:25,combo:60,metaDia:0,metaMes:0,barbers:[]},JSON.parse(localStorage.getItem(CFG)||'{}'));
-const brl=n=>Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-const dateKey=d=>new Date(d).toLocaleDateString('en-CA');
-const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
-const nowLocal=()=>{let d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16)};
-function renderDate(){document.getElementById('date').textContent=new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'short'}).toUpperCase().replace('.','')}
-function saveAll(){localStorage.setItem(KEY,JSON.stringify(cuts));localStorage.setItem(EXP,JSON.stringify(expenses));localStorage.setItem(CFG,JSON.stringify(cfg));localStorage.setItem(CLI,JSON.stringify(clients))}
-function buildClientSuggestions(){document.getElementById('clientSuggestions').innerHTML=clients.map(n=>`<option value="${esc(n)}"></option>`).join('')}
-function buildServices(){buildClientSuggestions();document.getElementById('serviceButtons').innerHTML=[['Corte',cfg.corte],['Barba',cfg.barba],['Corte + Barba',cfg.combo]].map((s,i)=>`<button class="service ${i===0?'sel':''}" onclick="chooseService(this,${s[1]})">${s[0]}<small>${brl(s[1])}</small></button>`).join('');document.getElementById('price').value=cfg.corte}
-function buildBarbers(){let opts='<option value="">Selecionar barbeiro</option>'+cfg.barbers.map(b=>`<option>${esc(b)}</option>`).join('');document.getElementById('barber').innerHTML=opts;document.getElementById('barberList').innerHTML=cfg.barbers.length?cfg.barbers.map(b=>`<span class="chip">${esc(b)} <button class="mini red" onclick="removeBarber('${esc(b).replace(/'/g,"\\'")}')">×</button></span>`).join(''):'<span class="chip">Nenhum barbeiro cadastrado</span>'}
-function chooseService(el,p){document.querySelectorAll('.service').forEach(x=>x.classList.remove('sel'));el.classList.add('sel');document.getElementById('price').value=p}
-function choosePay(el,p){document.querySelectorAll('.pay').forEach(x=>x.classList.remove('sel'));el.classList.add('sel');el.dataset.pay=p}
-function selectedPay(){let b=document.querySelector('.pay.sel');return b?.dataset.pay||'pix'}
-function openCut(){buildServices();buildBarbers();document.getElementById('cutTime').value=nowLocal();document.getElementById('client').value='';document.querySelectorAll('.pay').forEach(x=>x.classList.remove('sel'));document.querySelector('.pay').classList.add('sel');document.getElementById('payButtons').querySelector('.pay').dataset.pay='pix';document.getElementById('modalCut').classList.add('open');setTimeout(()=>document.getElementById('price').focus(),50)}
-function openExpense(){document.getElementById('expenseValue').value='';document.getElementById('expenseDesc').value='';document.getElementById('expenseTime').value=nowLocal();document.getElementById('modalExpense').classList.add('open');setTimeout(()=>document.getElementById('expenseValue').focus(),50)}
-function closeModal(id){document.getElementById(id).classList.remove('open')}
-function saveCut(){let price=Number(document.getElementById('price').value)||0,client=document.getElementById('client').value.trim(),pay=selectedPay(),barber=document.getElementById('barber').value,dt=document.getElementById('cutTime').value;if(!price)return alert('Informe o valor.');if(pay==='fiado'&&!client)return alert('Informe o nome do cliente para registrar como fiado.');cuts.unshift({id:Date.now(),price,client,fiado:pay==='fiado',payment:pay,barber,date:dt?new Date(dt).toISOString():new Date().toISOString()});if(client&&!clients.includes(client))clients.unshift(client);saveAll();closeModal('modalCut');render()}
-function saveExpense(){let value=Number(document.getElementById('expenseValue').value)||0,desc=document.getElementById('expenseDesc').value.trim(),cat=document.getElementById('expenseCat').value,dt=document.getElementById('expenseTime').value;if(!value)return alert('Informe o valor da saída.');if(!desc)return alert('Informe a descrição da despesa.');expenses.unshift({id:Date.now(),value,desc,cat,date:dt?new Date(dt).toISOString():new Date().toISOString()});saveAll();closeModal('modalExpense');render()}
-function periodFilter(period){let now=new Date();if(period==='day')return {from:new Date(now.getFullYear(),now.getMonth(),now.getDate()),to:new Date(now.getFullYear(),now.getMonth(),now.getDate()+1)};if(period==='week'){let from=new Date(now);from.setHours(0,0,0,0);from.setDate(now.getDate()-6);return {from,to:new Date()}}return {from:new Date(now.getFullYear(),now.getMonth(),1),to:new Date(now.getFullYear(),now.getMonth()+1,1)}}
-function inPeriod(date,p){let d=new Date(date);return !Number.isNaN(d.getTime())&&d>=p.from&&d<p.to}
-function amountOf(o){return Number(o?.value ?? o?.price ?? o?.amount ?? o?.valor ?? 0)||0}
-function total(arr,key='price'){return arr.reduce((s,c)=>s+amountOf(key==='value'?c:{...c,value:c[key]}),0)}
-function paymentLabel(p){return ({pix:'Pix',dinheiro:'Dinheiro',cartao:'Cartão',fiado:'Fiado'}[p]||'Pago')}
-function cutRow(c,actions=true){let d=new Date(c.date);return `<div class="row"><div><b>${esc(c.client||'Cliente avulso')}</b><small>${d.toLocaleDateString('pt-BR')} às ${d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})} · ${paymentLabel(c.payment)}${c.barber?' · '+esc(c.barber):''}</small>${actions?`<div class="actions">${c.fiado?`<button class="mini green" onclick="markPaid(${c.id})">Marcar pago</button>`:''}<button class="mini red" onclick="deleteCut(${c.id})">Excluir</button></div>`:''}</div><div class="price">${brl(c.price)}</div></div>`}
-function expenseRow(e){let d=new Date(e.date);return `<div class="row"><div><b>− ${brl(amountOf(e))}</b><small>${esc(e.desc)} · ${esc(e.cat)}<br>${d.toLocaleDateString('pt-BR')} às ${d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</small><div class="actions"><button class="mini red" onclick="deleteExpense(${e.id})">Excluir</button></div></div><div class="price" style="color:var(--red)">SAÍDA</div></div>`}
-function markPaid(id){let c=cuts.find(x=>x.id===id);if(c){c.fiado=false;c.payment='pix';c.paidAt=new Date().toISOString();saveAll();render()}}
-function deleteCut(id){if(confirm('Excluir este corte?')){cuts=cuts.filter(c=>c.id!==id);saveAll();render()}}
-function deleteExpense(id){if(confirm('Excluir esta saída de caixa?')){expenses=expenses.filter(e=>e.id!==id);saveAll();render()}}
-function show(id,btn){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById(id).classList.add('active');document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));if(btn)btn.classList.add('active');else{let map={home:0,reports:1,cash:2,expenses:3,clients:4,debt:3};if(map[id]!=null)document.querySelectorAll('.nav button')[map[id]].classList.add('active')}if(id==='settings')loadSettings();render()}
-function renderHome(){let now=new Date(),pDay=periodFilter('day'),pWeek=periodFilter('week'),pMonth=periodFilter('month'),tc=cuts.filter(c=>inPeriod(c.date,pDay)),wc=cuts.filter(c=>inPeriod(c.date,pWeek)),mc=cuts.filter(c=>inPeriod(c.date,pMonth));let today=total(tc),week=total(wc),month=total(mc);document.getElementById('today').textContent=brl(today);document.getElementById('todayCount').textContent=tc.length;document.getElementById('week').textContent=brl(week);document.getElementById('weekCount').textContent=wc.length+' cortes';document.getElementById('month').textContent=brl(month);document.getElementById('monthCount').textContent=mc.length+' cortes';let dp=cfg.metaDia?Math.min(100,today/cfg.metaDia*100):0,mp=cfg.metaMes?Math.min(100,month/cfg.metaMes*100):0;document.getElementById('dayProgress').style.width=dp+'%';document.getElementById('monthProgress').style.width=mp+'%';document.getElementById('dayGoalText').textContent=cfg.metaDia?'Meta diária '+brl(cfg.metaDia):'Meta diária não definida';document.getElementById('dayGoalPct').textContent=Math.round(dp)+'%';document.getElementById('recent').innerHTML=cuts.length?`<div class="list">${cuts.slice(0,6).map(c=>cutRow(c)).join('')}</div>`:`<div class="empty"><div class="icon">✂️</div><h3>Nenhum corte ainda</h3><p>Registre seu primeiro corte usando o +</p></div>`}
-function setReportPeriod(btn,period){document.querySelectorAll('#reports .tabs button').forEach(x=>x.classList.remove('sel'));btn.classList.add('sel');renderReports(period)}
-function renderReports(period='day'){let p=periodFilter(period),ins=cuts.filter(c=>inPeriod(c.date,p)),outs=expenses.filter(e=>inPeriod(e.date,p)),iv=ins.reduce((s,c)=>s+Number(c.price||0),0),ov=outs.reduce((s,e)=>s+amountOf(e),0);document.getElementById('rIn').textContent=brl(iv);document.getElementById('rOut').textContent=brl(ov);document.getElementById('rNet').textContent=brl(iv-ov);document.getElementById('rCuts').textContent=ins.length;let days=period==='month'?new Date().getDate():period==='week'?7:1,labels=[];for(let i=days-1;i>=0;i--){let d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-i);labels.push(d)}if(period==='day')labels=[new Date()];let vals=labels.map(d=>{let from=new Date(d);from.setHours(0,0,0,0);let to=new Date(from);to.setDate(to.getDate()+1);return [total(cuts.filter(c=>inPeriod(c.date,{from,to}))),expenses.filter(e=>inPeriod(e.date,{from,to})).reduce((s,e)=>s+amountOf(e),0)]});let max=Math.max(1,...vals.flat());document.getElementById('chart').innerHTML=labels.map((d,i)=>`<div class="bar-col"><div style="display:flex;align-items:end;gap:3px;height:150px"><div class="bar" title="${brl(vals[i][0])}" style="height:${Math.max(3,vals[i][0]/max*140)}px"></div><div class="bar out" title="${brl(vals[i][1])}" style="height:${Math.max(3,vals[i][1]/max*140)}px"></div></div><div class="bar-label">${d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}</div></div>`).join('')}
-let cashPeriod='day';
-function setCashPeriod(btn,period){cashPeriod=period;document.querySelectorAll('#cash .tabs button').forEach(x=>x.classList.remove('sel'));btn.classList.add('sel');renderCash()}
-function cashFilter(period){if(period==='all')return {from:new Date(0),to:new Date(8640000000000000)};return periodFilter(period)}
-function renderCash(){let p=cashFilter(cashPeriod),ins=cuts.filter(c=>inPeriod(c.date,p)),outs=expenses.filter(e=>inPeriod(e.date,p)),iv=ins.reduce((s,c)=>s+Number(c.price||0),0),ov=outs.reduce((s,e)=>s+amountOf(e),0),received=ins.filter(c=>!c.fiado).reduce((s,c)=>s+Number(c.price||0),0),paid=outs.reduce((s,e)=>s+amountOf(e),0),bal=iv-ov;document.getElementById('cashIn').textContent=brl(iv);document.getElementById('cashOut').textContent=brl(ov);document.getElementById('cashSold').textContent=brl(iv);document.getElementById('cashExpenses').textContent=brl(ov);document.getElementById('cashReceived').textContent=brl(received);document.getElementById('cashPaid').textContent=brl(paid);document.getElementById('cashQuickIn').textContent=brl(iv);document.getElementById('cashQuickOut').textContent=brl(ov);let b=document.getElementById('cashBalance');b.textContent=brl(bal);b.className='cash-highlight-value '+(bal>=0?'':'neg');let all=[...cuts.map(c=>({type:'in',date:c.date,data:c})),...expenses.map(e=>({type:'out',date:e.date,data:e}))].sort((a,b)=>new Date(b.date)-new Date(a.date));let filtered=all.filter(x=>inPeriod(x.date,p));document.getElementById('cashList').innerHTML=filtered.length?filtered.slice(0,30).map(x=>x.type==='in'?cutRow(x.data):expenseRow(x.data)).join(''):`<div class="empty"><div class="icon">▤</div><h3>Caixa vazio</h3><p>Registre entradas e saídas para acompanhar seu saldo.</p></div>`}
+const KEY="kings92_data_v1";
+const defaultData={
+  cuts:[], clients:[
+    {id:"c1",name:"João Silva",phone:"(11) 99999-9999",spent:850,open:150},
+    {id:"c2",name:"Maria Santos",phone:"(11) 98888-8888",spent:620,open:80},
+    {id:"c3",name:"Pedro Oliveira",phone:"(11) 97777-7777",spent:1200,open:200},
+    {id:"c4",name:"Lucas Mendes",phone:"(11) 96666-6666",spent:450,open:0},
+    {id:"c5",name:"Gabriel Lima",phone:"(11) 95555-5555",spent:310,open:60},
+    {id:"c6",name:"Felipe Rocha",phone:"(11) 94444-4444",spent:280,open:40}
+  ],
+  revenues:[
+    {id:"r1",client:"João Silva",desc:"Serviço de Barba",value:150,date:"2026-08-20",status:"A receber"},
+    {id:"r2",client:"Maria Santos",desc:"Coloração",value:80,date:"2026-08-18",status:"A receber"},
+    {id:"r3",client:"Pedro Oliveira",desc:"Corte + Barba",value:200,date:"2026-08-25",status:"A receber"},
+    {id:"r4",client:"Lucas Mendes",desc:"Corte",value:120,date:"2026-08-30",status:"A receber"},
+    {id:"r5",client:"Gabriel Lima",desc:"Pigmentação",value:160,date:"2026-08-31",status:"A receber"}
+  ],
+  expenses:[
+    {id:"e1",desc:"Aluguel da loja",value:500,category:"Aluguel",date:"2026-08-14",status:"A vencer"},
+    {id:"e2",desc:"Compra de Produtos",value:1250,category:"Mercadorias",date:"2026-08-16",status:"A vencer"},
+    {id:"e3",desc:"Conta de Luz",value:180,category:"Contas Fixas",date:"2026-08-18",status:"A vencer"},
+    {id:"e4",desc:"Internet",value:120,category:"Contas Fixas",date:"2026-08-20",status:"Pago"},
+    {id:"e5",desc:"Cartão Nubank",value:835,category:"Cartão",date:"2026-08-25",status:"A vencer"},
+    {id:"e6",desc:"Material de Barbearia",value:320,category:"Materiais",date:"2026-08-28",status:"Pago"},
+    {id:"e7",desc:"Salário Funcionário",value:2000,category:"Folha de Pagamento",date:"2026-08-31",status:"A vencer"}
+  ],
+  movements:[
+    {id:"m1",type:"in",desc:"Pagamento - João Silva",value:120,date:"2026-08-14"},
+    {id:"m2",type:"out",desc:"Aluguel da loja",value:500,date:"2026-08-14"},
+    {id:"m3",type:"in",desc:"Serviço - Maria Santos",value:80,date:"2026-08-13"},
+    {id:"m4",type:"out",desc:"Material de limpeza",value:45,date:"2026-08-13"},
+    {id:"m5",type:"in",desc:"Pix - Pedro Oliveira",value:150,date:"2026-08-12"}
+  ],
+  goal:0
+};
+let data=load();
+let page="home";
 
-function searchClients(){let q=prompt('Digite o nome do cliente para filtrar:');let el=document.querySelector('.client-search');el.dataset.q=(q||'').trim();renderClients()}
-function renderClients(){let q=(document.querySelector('.client-search')?.dataset.q||'').toLowerCase();let shown=clients.filter(n=>!q||n.toLowerCase().includes(q));document.getElementById('clientCount').textContent=clients.length+' clientes';document.getElementById('clientList').innerHTML=shown.map(n=>{let cs=cuts.filter(c=>c.client===n);return `<div class="row client-row"><div class="client-avatar">♙</div><div class="client-main"><b>${esc(n)}</b><small>${cs.length} corte(s) · ${brl(total(cs))}</small><div class="client-actions"><button class="mini blue" onclick="editClient('${esc(n).replace(/'/g,"\'")}')">Editar</button><button class="mini red" onclick="deleteClient('${esc(n).replace(/'/g,"\'")}')">Excluir</button></div></div></div>`}).join('');document.getElementById('clientEmpty').style.display=shown.length?'none':'block'}
-function addClient(){let n=document.getElementById('newClient').value.trim();if(!n)return alert('Informe o nome do cliente.');if(!clients.includes(n))clients.unshift(n);document.getElementById('newClient').value='';saveAll();renderClients()}
-let expensePeriod='day';
-function setExpensePeriod(btn,period){expensePeriod=period;document.querySelectorAll('#expenses .expense-filter button').forEach(x=>x.classList.remove('sel'));btn.classList.add('sel');renderExpenses()}
-function renderExpenses(){let p=expensePeriod==='all'?{from:new Date(0),to:new Date(8640000000000000)}:cashFilter(expensePeriod),arr=expenses.filter(e=>inPeriod(e.date,p)).sort((a,b)=>new Date(b.date)-new Date(a.date));let totalOut=arr.reduce((s,e)=>s+amountOf(e),0);document.getElementById('expensePageTotal').textContent=brl(totalOut);document.getElementById('expenseList').innerHTML=arr.length?arr.map(expenseRow).join(''):'';document.getElementById('expenseEmpty').style.display=arr.length?'none':'block'}
-function renderDebt(){let debts=cuts.filter(c=>c.fiado),clients=new Set(debts.map(c=>c.client||'Sem nome'));document.getElementById('debtTotal').textContent=brl(total(debts));document.getElementById('debtSub').textContent=debts.length+' cortes pendentes · '+clients.size+' clientes';document.getElementById('debtList').innerHTML=debts.map(c=>cutRow(c)).join('');document.getElementById('debtEmpty').style.display=debts.length?'none':'block'}
-function render(){document.getElementById('appName').textContent=cfg.name;renderHome();renderReports();renderCash();renderExpenses();renderDebt();renderClients()}
-function loadSettings(){document.getElementById('cfgName').value=cfg.name;document.getElementById('cfgCorte').value=cfg.corte;document.getElementById('cfgBarba').value=cfg.barba;document.getElementById('cfgCombo').value=cfg.combo;document.getElementById('cfgMetaDia').value=cfg.metaDia;document.getElementById('cfgMetaMes').value=cfg.metaMes;buildBarbers()}
-function saveSettings(){cfg={...cfg,name:document.getElementById('cfgName').value.trim()||'KINGS',corte:Number(document.getElementById('cfgCorte').value)||0,barba:Number(document.getElementById('cfgBarba').value)||0,combo:Number(document.getElementById('cfgCombo').value)||0,metaDia:Number(document.getElementById('cfgMetaDia').value)||0,metaMes:Number(document.getElementById('cfgMetaMes').value)||0};saveAll();buildServices();buildBarbers();render();alert('Configurações salvas!')}
-function addBarber(){let n=document.getElementById('newBarber').value.trim();if(!n)return;if(!cfg.barbers.includes(n))cfg.barbers.push(n);document.getElementById('newBarber').value='';saveAll();buildBarbers()}
-function removeBarber(n){cfg.barbers=cfg.barbers.filter(x=>x!==n);saveAll();buildBarbers()}
-function editClient(n){document.getElementById('oldClient').value=n;document.getElementById('editClientName').value=n;document.getElementById('modalEditClient').classList.add('open')}
-function saveClientEdit(){let old=document.getElementById('oldClient').value,n=document.getElementById('editClientName').value.trim();if(!n)return alert('Informe o nome.');clients=clients.map(x=>x===old?n:x);cuts.forEach(c=>{if(c.client===old)c.client=n});clients=[...new Set(clients)];saveAll();closeModal('modalEditClient');render()}
-function deleteClient(n){if(!confirm('Excluir este cliente? Os cortes serão mantidos no histórico, mas o cliente será removido do cadastro.'))return;clients=clients.filter(x=>x!==n);saveAll();render()}
-function clearData(){if(confirm('Apagar TODOS os cortes, clientes, fiados e saídas de caixa? Esta ação não pode ser desfeita.')){cuts=[];expenses=[];clients=[];saveAll();render();alert('Dados apagados.')}}
-renderDate();loadSettings();render();if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js?v=kings9v9.2.1',{updateViaCache:'none'}).catch(()=>{});
-
-/* KINGS v9 — arquitetura financeira completa */
-let revenues=JSON.parse(localStorage.getItem('kings_revenues_v9')||'[]');
-let calCursor=new Date(); calCursor.setDate(1);
-expenses=expenses.map(e=>Object.assign({type:'Variável',dueDate:e.date?.slice(0,10)||dateKey(new Date()),paidDate:e.date?.slice(0,10)||dateKey(new Date()),installment:1,totalInstallments:1,recurrence:'Não recorrente',status:'paid'},e));
-// KINGS 9.2.1 — deduplicação automática e conservadora
-const normText=v=>String(v??'').trim().toLocaleLowerCase('pt-BR').replace(/\s+/g,' ');
-function dedupeBySignature(list, signature){
+function clone(x){return JSON.parse(JSON.stringify(x))}
+function load(){
+  try{
+    const old=JSON.parse(localStorage.getItem(KEY));
+    if(old) return dedupeAll(old);
+  }catch(e){}
+  const d=clone(defaultData); save(d); return d;
+}
+function norm(v){return String(v??"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim()}
+function money(v){return new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(Number(v)||0)}
+function uid(p){return p+Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
+function signature(o, fields){
+  return fields.map(k=>{
+    let v=o[k];
+    if(k==="value") v=Number(v||0).toFixed(2);
+    if(k==="date") v=String(v||"").slice(0,10);
+    return norm(v);
+  }).join("|")
+}
+function dedupe(arr,fields){
   const seen=new Set(), out=[];
-  for(const item of Array.isArray(list)?list:[]){ const key=signature(item); if(!seen.has(key)){seen.add(key);out.push(item);} }
+  for(const x of (Array.isArray(arr)?arr:[])){
+    const s=signature(x,fields);
+    if(!seen.has(s)){seen.add(s);out.push(x)}
+  }
   return out;
 }
-function dedupeAllData(){
-  const before={cuts:cuts.length,clients:clients.length,revenues:revenues.length,expenses:expenses.length};
-  cuts=dedupeBySignature(cuts,c=>[normText(c.client||''),Number(c.price||0),String(c.date||''),normText(c.payment||''),normText(c.barber||''),!!c.fiado].join('|'));
-  revenues=dedupeBySignature(revenues,r=>[normText(r.desc),Number(r.value||0),normText(r.cat),normText(r.pay),String(r.date||'')].join('|'));
-  expenses=dedupeBySignature(expenses,e=>[normText(e.desc),Number(e.value||0),normText(e.cat),normText(e.type),String(e.dueDate||''),Number(e.installment||1),Number(e.totalInstallments||1),normText(e.recurrence),normText(e.status),String(e.paidDate||''),String(e.date||'')].join('|'));
-  const clientMap=new Map();
-  for(const raw of Array.isArray(clients)?clients:[]){ const display=String(raw??'').trim(); if(!display) continue; const key=normText(display); if(!clientMap.has(key)) clientMap.set(key,display); }
-  for(const c of cuts){ const display=String(c.client??'').trim(); if(display){const key=normText(display); if(!clientMap.has(key)) clientMap.set(key,display);} }
-  clients=[...clientMap.values()];
-  return before.cuts!==cuts.length || before.clients!==clients.length || before.revenues!==revenues.length || before.expenses!==expenses.length;
+function dedupeAll(d){
+  d.clients=dedupe(d.clients,["name","phone"]);
+  d.revenues=dedupe(d.revenues,["client","desc","value","date"]);
+  d.expenses=dedupe(d.expenses,["desc","value","category","date"]);
+  d.movements=dedupe(d.movements,["type","desc","value","date"]);
+  d.cuts=dedupe(d.cuts,["client","value","date","service"]);
+  return d;
 }
+function save(d=data){localStorage.setItem(KEY,JSON.stringify(d))}
+function add(type,obj){
+  data[type].push({...obj,id:uid(type[0])});
+  data=dedupeAll(data); save(); render();
+}
+function totals(){
+  const incoming=data.movements.filter(x=>x.type==="in").reduce((a,x)=>a+Number(x.value||0),0);
+  const outgoing=data.movements.filter(x=>x.type==="out").reduce((a,x)=>a+Number(x.value||0),0);
+  const receivable=data.revenues.filter(x=>x.status!=="Recebida").reduce((a,x)=>a+Number(x.value||0),0);
+  const payable=data.expenses.filter(x=>x.status!=="Pago").reduce((a,x)=>a+Number(x.value||0),0);
+  return {incoming,outgoing,receivable,payable,balance:incoming-outgoing,profit:incoming-outgoing};
+}
+function render(){
+  document.querySelectorAll("[data-nav]").forEach(b=>b.classList.toggle("active",b.dataset.nav===page));
+  document.getElementById("main").innerHTML=pages[page]?pages[page]():pages.home();
+  document.querySelectorAll("[data-nav]").forEach(b=>b.onclick=()=>{page=b.dataset.nav;closeDrawer();render()});
+  bindActions();
+}
+function header(title,sub=""){
+  return `<div style="margin-bottom:12px"><h1 class="page-title">${title}</h1><div class="page-sub">${sub}</div></div>`
+}
+function pagesHome(){
+ const t=totals(), goal=Number(data.goal||0), pct=goal?Math.min(100,t.incoming/goal*100):0;
+ return `<div class="page">
+ ${header("Central Financeira","Hoje, 14 de Agosto de 2026")}
+ <section class="hero"><div class="hero-kicker">FATURAMENTO DE HOJE</div><h1>${money(todayRevenue())}</h1><div class="accent">${todayCuts()} cortes registrados</div><div class="progress"><i style="width:${pct}%"></i></div><div class="progress-row"><span>${goal?`Meta diária ${money(goal)}`:"Meta diária não definida"}</span><span>${Math.round(pct)}%</span></div></section>
+ <div class="grid2"><div class="card"><div class="label">ÚLTIMOS 7 DIAS</div><div class="big">${money(weekRevenue())}</div><small>${weekCuts()} cortes</small></div><div class="card"><div class="label">MÊS ATUAL</div><div class="big">${money(monthRevenue())}</div><small>${monthCuts()} cortes</small></div></div>
+ <section class="fin-card"><div class="fin-head"><div><div class="page-sub">VISÃO FINANCEIRA</div><h2>Central Financeira</h2></div><button data-nav="cash">Ver caixa →</button></div>
+ <div class="fin-grid"><div class="stat"><small>Entradas</small><b class="green">${money(t.incoming)}</b></div><div class="stat"><small>Saídas</small><b class="red">${money(t.outgoing)}</b></div><div class="stat"><small>A Receber</small><b class="blue">${money(t.receivable)}</b></div><div class="stat"><small>A Pagar</small><b class="gold">${money(t.payable)}</b></div></div>
+ <div class="quick-grid"><button class="quick greenbtn" data-action="quickIn"><span class="qi">＋</span>Entrada</button><button class="quick redbtn" data-action="quickOut"><span class="qi">−</span>Saída</button><button class="quick bluebtn" data-action="addClient"><span class="qi">♙</span>Cliente</button></div></section>
+ <div class="section-title">Movimentações recentes</div>${movementRows(data.movements.slice().reverse().slice(0,5))}
+ </div>`
+}
+function todayRevenue(){return data.cuts.filter(x=>x.date==="2026-08-14").reduce((a,x)=>a+Number(x.value||0),0)}
+function todayCuts(){return data.cuts.filter(x=>x.date==="2026-08-14").length}
+function weekRevenue(){return data.cuts.reduce((a,x)=>a+Number(x.value||0),0)}
+function weekCuts(){return data.cuts.length}
+function monthRevenue(){return data.cuts.filter(x=>String(x.date).startsWith("2026-08")).reduce((a,x)=>a+Number(x.value||0),0)}
+function monthCuts(){return data.cuts.filter(x=>String(x.date).startsWith("2026-08")).length}
+function movementRows(arr){return arr.map(x=>`<div class="row"><div class="row-icon ${x.type==="in"?"green":"red"}">${x.type==="in"?"↑":"↓"}</div><div class="row-main"><b>${esc(x.desc)}</b><small>${brDate(x.date)}</small></div><div class="row-price ${x.type==="in"?"green":"red"}">${money(x.value)}</div></div>`).join("")||`<div class="empty"><strong>Nenhuma movimentação</strong>Comece registrando uma entrada ou saída.</div>`}
+function pagesCash(){const t=totals();return `<div class="page">${header("Caixa","Controle de entradas e saídas")}
+<div class="grid2"><button class="quick greenbtn" data-action="quickIn"><span class="qi">＋</span>Entrada rápida</button><button class="quick redbtn" data-action="quickOut"><span class="qi">−</span>Saída rápida</button></div>
+<div class="metric-row" style="margin-top:12px"><div class="metric"><span>Total Entradas</span><b class="green">${money(t.incoming)}</b></div><div class="metric"><span>Total Saídas</span><b class="red">${money(t.outgoing)}</b></div></div>
+<div class="fin-card" style="text-align:center"><div class="page-sub">Saldo do Período</div><div style="font-size:35px;font-weight:950;margin-top:7px" class="${t.balance>=0?"green":"red"}">${money(t.balance)}</div></div>
+<div class="section-title">Movimentações Recentes</div>${movementRows(data.movements.slice().reverse())}</div>`}
+function pagesExpenses(){return `<div class="page">${header("Despesas","Gerencie suas despesas")}<div class="filter"><button class="active">Todas</button><button>A vencer</button><button>Vencidas</button><button>Pagas</button></div>${data.expenses.map(expenseRow).join("")}<button class="fab" data-action="addExpense">＋</button></div>`}
+function expenseRow(e){return `<div class="row"><div class="row-icon">${iconFor(e.category)}</div><div class="row-main"><b>${esc(e.desc)}</b><small>Venc: ${brDate(e.date)} · ${esc(e.category)}</small></div><div style="text-align:right"><div class="row-price red">${money(e.value)}</div><small class="${e.status==="Pago"?"green":"gold"}">${e.status}</small></div></div>`}
+function pagesClients(){return `<div class="page">${header("Clientes","Seus clientes cadastrados")}<input class="search" id="clientSearch" placeholder="⌕  Buscar cliente..."><div id="clientList">${clientRows(data.clients)}</div><button class="fab" data-action="addClient">＋</button></div>`}
+function clientRows(arr){return arr.map(c=>`<div class="row"><div class="row-icon">♙</div><div class="row-main"><b>${esc(c.name)}</b><small>${esc(c.phone)}<br>Total gasto: ${money(c.spent)}</small></div><div style="text-align:right"><small class="${c.open?"red":"green"}">${c.open?"Em aberto":"✓"}</small><div class="row-price ${c.open?"red":"green"}">${money(c.open)}</div></div></div>`).join("")||`<div class="empty"><strong>Nenhum cliente</strong>Cadastre seu primeiro cliente.</div>`}
+function pagesReceivables(){return `<div class="page">${header("Receitas","Contas a receber")}<div class="filter"><button class="active">A Receber</button><button>Recebidas</button><button>Todas</button></div>${data.revenues.map(revenueRow).join("")}<button class="fab" data-action="addRevenue">＋</button></div>`}
+function revenueRow(r){return `<div class="row"><div class="row-icon">♙</div><div class="row-main"><b>${esc(r.client)}</b><small>${brDate(r.date)}<br>${esc(r.desc)}</small></div><div style="text-align:right"><div class="row-price ${r.status==="Recebida"?"green":"red"}">${money(r.value)}</div><small class="${r.status==="Recebida"?"green":"gold"}">${r.status}</small></div></div>`}
+function pagesCalendar(){let cells=["DOM","SEG","TER","QUA","QUI","SEX","SÁB"];for(let i=1;i<=31;i++)cells.push(`<div class="cal-cell"><b>${i}</b>${i%3===0?`<span class="pill in">R$ ${i*25}</span>`:""}${i%7===0?`<span class="pill out">R$ ${i*20}</span>`:""}</div>`);return `<div class="page">${header("Calendário","Visualize entradas e saídas")}<div class="fin-card"><div class="fin-head"><button>‹</button><b>Agosto 2026</b><button>›</button></div></div><div class="calendar">${cells.map((x,i)=>i<7?`<div class="cal-head">${x}</div>`:x).join("")}</div></div>`}
+function pagesReports(){const t=totals();return `<div class="page">${header("Relatórios","Análises e gráficos")}<div class="metric-row"><div class="metric"><span>Entradas</span><b class="green">${money(t.incoming)}</b></div><div class="metric"><span>Saídas</span><b class="red">${money(t.outgoing)}</b></div><div class="metric"><span>Lucro</span><b class="blue">${money(t.profit)}</b></div><div class="metric"><span>Margem</span><b class="gold">${t.incoming?(t.profit/t.incoming*100).toFixed(2):"0,00"}%</b></div></div><div class="fin-card"><b>Entradas x Saídas</b><div class="chart">${[30,52,42,70,55,82,62,77,66,88,70,92].map(v=>`<i class="bar" style="height:${v}%"></i>`).join("")}${[18,25,20,38,29,45,35,49,40,54,44,58].map(v=>`<i class="bar r" style="height:${v}%"></i>`).join("")}</div></div></div>`}
+function pagesCategories(){const map={};data.expenses.forEach(e=>map[e.category]=(map[e.category]||0)+Number(e.value||0));return `<div class="page">${header("Despesas por Categoria","Agosto 2026")}${Object.entries(map).map(([k,v])=>`<div class="row"><div class="row-icon">${iconFor(k)}</div><div class="row-main"><b>${esc(k)}</b><small>Despesas registradas</small></div><div class="row-price red">${money(v)}</div></div>`).join("")}</div>`}
+function pagesMore(){return `<div class="page">${header("Mais","Configurações e ferramentas")}<div class="more-list">${[
+["Categorias","Gerencie categorias de receitas e despesas","categories"],["Contas","Gerencie suas contas e cartões","cash"],["Formas de Pagamento","Débito, Pix, Cartão...","settings"],["Backup & Restauração","Faça backup dos seus dados","settings"],["Segurança","Bloqueio e dados","settings"],["Sobre o KINGS","Versão 9.2.1","about"]
+].map(x=>`<button class="row" style="width:100%;text-align:left" data-nav="${x[2]}"><div class="row-icon">◆</div><div class="row-main"><b>${x[0]}</b><small>${x[1]}</small></div><span>›</span></button>`).join("")}</div></div>`}
+function pagesSettings(){return `<div class="page">${header("Configurações","KINGS 9.2.1")}<div class="fin-card"><div class="section-title" style="margin-top:0">Meta diária</div><div class="field"><input id="goalInput" class="search" type="number" value="${data.goal||""}" placeholder="Ex.: 1000"></div><button class="save" data-action="saveGoal">Salvar meta</button></div><div class="fin-card"><div class="section-title" style="margin-top:0">Deduplicação</div><p class="page-sub">O KINGS remove automaticamente registros idênticos de cortes, clientes, receitas, despesas e movimentações antes de salvar.</p><button class="save" data-action="dedupe">Verificar e eliminar duplicados agora</button></div><div class="fin-card"><div class="section-title" style="margin-top:0">Backup</div><button class="save" data-action="export">Exportar backup JSON</button></div></div>`}
+function pagesAbout(){return `<div class="page">${header("Sobre o KINGS","Sistema Financeiro")}<div class="hero"><div class="hero-kicker">KINGS 9.2.1</div><h1 style="font-size:32px">Completo e profissional</h1><div class="accent">100% offline • PWA instalável</div><div class="section-title">✓ Deduplicação automática</div><div class="section-title">✓ Backup e restauração</div></div></div>`}
+const pages={home:pagesHome,cash:pagesCash,expenses:pagesExpenses,clients:pagesClients,receivables:pagesReceivables,calendar:pagesCalendar,reports:pagesReports,categories:pagesCategories,more:pagesMore,settings:pagesSettings,about:pagesAbout};
 
-function saveAllV9(){dedupeAllData();saveAll();localStorage.setItem('kings_revenues_v9',JSON.stringify(revenues));}
-function allIncome(){return [...cuts.map(c=>({amount:Number(c.price)||0,date:c.date,source:'cut',fiado:!!c.fiado})),...revenues.map(r=>({amount:Number(r.value)||0,date:r.date,source:'revenue',fiado:false}))]}
-function allPaidExpenses(){return expenses.filter(e=>e.status!=='pending');}
-function availableBalance(){let i=allIncome().filter(x=>!x.fiado).reduce((s,x)=>s+x.amount,0);let o=allPaidExpenses().reduce((s,e)=>s+Number(e.value||0),0);return i-o}
-function receivable(){return cuts.filter(c=>c.fiado).reduce((s,c)=>s+Number(c.price||0),0)}
-function payable(){return expenses.filter(e=>e.status==='pending').reduce((s,e)=>s+Number(e.value||0),0)}
-function renderCentral(){let m=new Date(),from=new Date(m.getFullYear(),m.getMonth(),1),to=new Date(m.getFullYear(),m.getMonth()+1,1);let mi=allIncome().filter(x=>new Date(x.date)>=from&&new Date(x.date)<to&&!x.fiado).reduce((s,x)=>s+x.amount,0);let mo=allPaidExpenses().filter(e=>new Date(e.date)>=from&&new Date(e.date)<to).reduce((s,e)=>s+Number(e.value||0),0);document.getElementById('v9Available').textContent=brl(availableBalance());document.getElementById('v9Receivable').textContent=brl(receivable());document.getElementById('v9Payable').textContent=brl(payable());document.getElementById('v9Profit').textContent=brl(mi-mo)}
-function openRevenue(){document.getElementById('revDesc').value='';document.getElementById('revValue').value='';document.getElementById('revDate').value=nowLocal();document.getElementById('modalRevenue').classList.add('open')}
-function saveRevenue(){let desc=document.getElementById('revDesc').value.trim(),value=Number(document.getElementById('revValue').value)||0,cat=document.getElementById('revCat').value,pay=document.getElementById('revPay').value,dt=document.getElementById('revDate').value;if(!desc)return alert('Informe a descrição.');if(!value)return alert('Informe o valor.');revenues.unshift({id:Date.now(),desc,value,cat,pay,date:dt?new Date(dt).toISOString():new Date().toISOString()});saveAllV9();closeModal('modalRevenue');render()}
-let revenuePeriod='month';function setRevenuePeriod(btn,p){revenuePeriod=p;document.querySelectorAll('#revenue .expense-filter button').forEach(x=>x.classList.remove('sel'));btn.classList.add('sel');renderRevenue()}
-function renderRevenue(){let p=revenuePeriod==='all'?{from:new Date(0),to:new Date(8640000000000000)}:cashFilter(revenuePeriod);let arr=revenues.filter(r=>inPeriod(r.date,p)).sort((a,b)=>new Date(b.date)-new Date(a.date));document.getElementById('revenueTotal').textContent=brl(arr.reduce((s,r)=>s+Number(r.value||0),0));document.getElementById('revenueList').innerHTML=arr.map(r=>`<div class="row"><div><b>+ ${brl(r.value)}</b><small>${esc(r.desc)} · ${esc(r.cat)} · ${esc(r.pay)}<br>${new Date(r.date).toLocaleDateString('pt-BR')}</small><div class="actions"><button class="mini red" onclick="deleteRevenue(${r.id})">Excluir</button></div></div><div class="price" style="color:var(--green)">ENTRADA</div></div>`).join('');document.getElementById('revenueEmpty').style.display=arr.length?'none':'block'}
-function deleteRevenue(id){if(confirm('Excluir esta receita?')){revenues=revenues.filter(r=>r.id!==id);saveAllV9();render()}}
-function openExpense(){document.getElementById('v9ExpDesc').value='';document.getElementById('v9ExpValue').value='';document.getElementById('v9ExpDue').value=dateKey(new Date());document.getElementById('v9ExpPaid').value='';document.getElementById('v9ExpPart').value=1;document.getElementById('v9ExpParts').value=1;document.getElementById('v9ExpStatus').value='pending';document.getElementById('modalExpenseV9').classList.add('open')}
-function saveExpenseV9(){let desc=document.getElementById('v9ExpDesc').value.trim(),value=Number(document.getElementById('v9ExpValue').value)||0,type=document.getElementById('v9ExpType').value,cat=document.getElementById('v9ExpCat').value,due=document.getElementById('v9ExpDue').value,part=Number(document.getElementById('v9ExpPart').value)||1,totalPart=Number(document.getElementById('v9ExpParts').value)||1,rec=document.getElementById('v9ExpRec').value,status=document.getElementById('v9ExpStatus').value,paid=document.getElementById('v9ExpPaid').value;if(!desc)return alert('Informe a descrição da despesa.');if(!value)return alert('Informe o valor.');if(!due)return alert('Informe o vencimento.');if(part>totalPart)return alert('A parcela atual não pode ser maior que o total.');let d=new Date(due+'T12:00:00');expenses.unshift({id:Date.now(),value,desc,cat,type,dueDate:due,installment:part,totalInstallments:totalPart,recurrence:rec,status,paidDate:paid||null,date:d.toISOString()});saveAllV9();closeModal('modalExpenseV9');render()}
-function expenseRow(e){let due=e.dueDate||e.date?.slice(0,10)||dateKey(new Date()),status=e.status==='pending'?'PENDENTE':'PAGA',today=dateKey(new Date()),late=e.status==='pending'&&due<today;return `<div class="row v9-exp-row"><div><b>− ${brl(e.value)}</b><small>${esc(e.desc)} · ${esc(e.cat)} · ${esc(e.type)}<br>Vence: ${new Date(due+'T12:00:00').toLocaleDateString('pt-BR')} · Parcela ${e.installment||1}/${e.totalInstallments||1} · ${esc(e.recurrence||'Não recorrente')}</small><div class="actions"><button class="mini ${e.status==='pending'?'green':'blue'}" onclick="toggleExpenseStatus(${e.id})">${status}</button>${late?'<span class="mini red">VENCIDA</span>':''}<button class="mini red" onclick="deleteExpense(${e.id})">Excluir</button></div></div><div class="price" style="color:${e.status==='pending'?'#ffb45f':'var(--red)'}">${e.status==='pending'?'A PAGAR':'SAÍDA'}</div></div>`}
-function toggleExpenseStatus(id){let e=expenses.find(x=>x.id===id);if(!e)return;e.status=e.status==='pending'?'paid':'pending';e.paidDate=e.status==='paid'?dateKey(new Date()):null;saveAllV9();render()}
-function renderExpenses(){let p=expensePeriod==='all'?{from:new Date(0),to:new Date(8640000000000000)}:cashFilter(expensePeriod),arr=expenses.filter(e=>inPeriod(e.date,p)).sort((a,b)=>new Date((b.dueDate||b.date))-new Date((a.dueDate||a.date)));let totalOut=arr.reduce((s,e)=>s+Number(e.value||0),0);document.getElementById('expensePageTotal').textContent=brl(totalOut);document.getElementById('expenseList').innerHTML=arr.length?arr.map(expenseRow).join(''):'';document.getElementById('expenseEmpty').style.display=arr.length?'none':'block'}
-function renderCash(){let p=cashFilter(cashPeriod),inc=allIncome().filter(x=>inPeriod(x.date,p)),outs=expenses.filter(e=>inPeriod(e.date,p)),iv=inc.reduce((s,x)=>s+x.amount,0),ov=outs.filter(e=>e.status!=='pending').reduce((s,e)=>s+Number(e.value||0),0),pending=outs.filter(e=>e.status==='pending').reduce((s,e)=>s+Number(e.value||0),0),received=inc.filter(x=>!x.fiado).reduce((s,x)=>s+x.amount,0),bal=received-ov;document.getElementById('cashIn').textContent=brl(iv);document.getElementById('cashOut').textContent=brl(ov);document.getElementById('cashSold').textContent=brl(iv);document.getElementById('cashExpenses').textContent=brl(ov+pending);document.getElementById('cashReceived').textContent=brl(received);document.getElementById('cashPaid').textContent=brl(ov);document.getElementById('cashQuickIn').textContent=brl(iv);document.getElementById('cashQuickOut').textContent=brl(ov);let b=document.getElementById('cashBalance');b.textContent=brl(bal);b.className='cash-highlight-value '+(bal>=0?'':'neg');let all=[...cuts.map(c=>({type:'in',date:c.date,data:c})),...revenues.map(r=>({type:'in',date:r.date,data:r})),...expenses.map(e=>({type:'out',date:e.date,data:e}))].filter(x=>inPeriod(x.date,p)).sort((a,b)=>new Date(b.date)-new Date(a.date));document.getElementById('cashList').innerHTML=all.length?all.slice(0,40).map(x=>x.type==='out'?expenseRow(x.data):x.data.desc?`<div class="row"><div><b>+ ${brl(x.data.value)}</b><small>${esc(x.data.desc)} · ${esc(x.data.cat)}<br>${new Date(x.data.date).toLocaleDateString('pt-BR')}</small></div><div class="price" style="color:var(--green)">ENTRADA</div></div>`:cutRow(x.data)).join(''):`<div class="empty"><div class="icon">▤</div><h3>Caixa vazio</h3><p>Registre entradas e saídas para acompanhar seu saldo.</p></div>`}
-function renderReports(period='day'){let p=periodFilter(period),ins=allIncome().filter(c=>inPeriod(c.date,p)&&!c.fiado),outs=expenses.filter(e=>inPeriod(e.date,p)&&e.status!=='pending'),iv=ins.reduce((s,c)=>s+c.amount,0),ov=outs.reduce((s,e)=>s+Number(e.value||0),0);document.getElementById('rIn').textContent=brl(iv);document.getElementById('rOut').textContent=brl(ov);document.getElementById('rNet').textContent=brl(iv-ov);document.getElementById('rCuts').textContent=cuts.filter(c=>inPeriod(c.date,p)).length;let days=period==='month'?new Date().getDate():period==='week'?7:1,labels=[];for(let i=days-1;i>=0;i--){let d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-i);labels.push(d)}if(period==='day')labels=[new Date()];let vals=labels.map(d=>{let from=new Date(d);from.setHours(0,0,0,0);let to=new Date(from);to.setDate(to.getDate()+1);return [allIncome().filter(c=>inPeriod(c.date,{from,to})&&!c.fiado).reduce((s,c)=>s+c.amount,0),expenses.filter(e=>inPeriod(e.date,{from,to})&&e.status!=='pending').reduce((s,e)=>s+Number(e.value||0),0)]});let max=Math.max(1,...vals.flat());document.getElementById('chart').innerHTML=labels.map((d,i)=>`<div class="bar-col"><div style="display:flex;align-items:end;gap:3px;height:150px"><div class="bar" title="${brl(vals[i][0])}" style="height:${Math.max(3,vals[i][0]/max*140)}px"></div><div class="bar out" title="${brl(vals[i][1])}" style="height:${Math.max(3,vals[i][1]/max*140)}px"></div></div><div class="bar-label">${d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}</div></div>`).join('')}
-function moveCalendar(delta){calCursor.setMonth(calCursor.getMonth()+delta);renderCalendar()}
-function renderCalendar(){let y=calCursor.getFullYear(),m=calCursor.getMonth(),first=new Date(y,m,1),last=new Date(y,m+1,0),start=(first.getDay()+6)%7,days=last.getDate(),names=['SEG','TER','QUA','QUI','SEX','SÁB','DOM'];let html=names.map(n=>`<div class="cal-week">${n}</div>`).join('');for(let i=0;i<start;i++)html+='<div class="cal-cell muted"></div>';for(let d=1;d<=days;d++){let key=dateKey(new Date(y,m,d)),ci=cuts.filter(c=>dateKey(new Date(c.date))===key).reduce((s,c)=>s+Number(c.price||0),0)+revenues.filter(r=>dateKey(new Date(r.date))===key).reduce((s,r)=>s+Number(r.value||0),0),co=expenses.filter(e=>(e.dueDate||dateKey(new Date(e.date)))===key).reduce((s,e)=>s+Number(e.value||0),0),pend=expenses.some(e=>(e.dueDate||dateKey(new Date(e.date)))===key&&e.status==='pending');html+=`<div class="cal-cell"><b>${d}</b>${ci?`<span class="cal-pill in">+ ${brl(ci)}</span>`:''}${co?`<span class="cal-pill out">− ${brl(co)}</span>`:''}${pend?'<span class="cal-pending">Pendente</span>':''}</div>`}document.getElementById('calTitle').textContent=new Date(y,m,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'}).replace(/^./,c=>c.toUpperCase());document.getElementById('calendarGrid').innerHTML=html}
-function show(id,btn){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById(id).classList.add('active');document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));if(btn)btn.classList.add('active');else{let map={home:0,cash:1,expenses:2,clients:3,more:4};if(map[id]!=null)document.querySelectorAll('.nav button')[map[id]].classList.add('active')}if(id==='settings')loadSettings();render();if(id==='calendar')renderCalendar();if(id==='revenue')renderRevenue()}
-function render(){document.getElementById('appName').textContent=cfg.name;renderHome();renderReports();renderCash();renderExpenses();renderDebt();renderClients();renderCentral();renderRevenue()}
-function renderHome(){let now=new Date(),pDay=periodFilter('day'),pWeek=periodFilter('week'),pMonth=periodFilter('month'),tc=cuts.filter(c=>inPeriod(c.date,pDay)),wc=cuts.filter(c=>inPeriod(c.date,pWeek)),mc=cuts.filter(c=>inPeriod(c.date,pMonth));let today=total(tc),week=total(wc),month=total(mc);document.getElementById('today').textContent=brl(today);document.getElementById('todayCount').textContent=tc.length;document.getElementById('week').textContent=brl(week);document.getElementById('weekCount').textContent=wc.length+' cortes';document.getElementById('month').textContent=brl(month);document.getElementById('monthCount').textContent=mc.length+' cortes';let dp=cfg.metaDia?Math.min(100,today/cfg.metaDia*100):0,mp=cfg.metaMes?Math.min(100,month/cfg.metaMes*100):0;document.getElementById('dayProgress').style.width=dp+'%';document.getElementById('monthProgress').style.width=mp+'%';document.getElementById('dayGoalText').textContent=cfg.metaDia?'Meta diária '+brl(cfg.metaDia):'Meta diária não definida';document.getElementById('dayGoalPct').textContent=Math.round(dp)+'%';document.getElementById('recent').innerHTML=cuts.length?`<div class="list">${cuts.slice(0,6).map(c=>cutRow(c)).join('')}</div>`:`<div class="empty"><div class="icon">✂️</div><h3>Nenhum corte ainda</h3><p>Registre seu primeiro corte usando o +</p></div>`}
-dedupeAllData();saveAllV9();renderCentral();
+function bindActions(){
+ const s=document.getElementById("clientSearch"); if(s)s.oninput=()=>document.getElementById("clientList").innerHTML=clientRows(data.clients.filter(c=>norm(c.name).includes(norm(s.value))||norm(c.phone).includes(norm(s.value))));
+}
+function openModal(html){document.getElementById("modalBody").innerHTML=html;document.getElementById("modal").classList.add("open")}
+function closeModal(){document.getElementById("modal").classList.remove("open")}
+function closeDrawer(){document.getElementById("drawer").classList.remove("open")}
+function bindGlobal(){
+ document.addEventListener("click",e=>{
+  const nav=e.target.closest("[data-nav]"); if(nav){page=nav.dataset.nav;closeModal();closeDrawer();render();return}
+  const a=e.target.closest("[data-action]"); if(!a)return;
+  const act=a.dataset.action;
+  if(act==="menu")document.getElementById("drawer").classList.add("open");
+  if(act==="closeDrawer")closeDrawer();
+  if(act==="settings"){page="settings";render()}
+  if(act==="closeModal")closeModal();
+  if(act==="quickIn")openEntry("in");
+  if(act==="quickOut")openEntry("out");
+  if(act==="addClient")openClient();
+  if(act==="addExpense")openExpense();
+  if(act==="addRevenue")openRevenue();
+  if(act==="saveGoal"){data.goal=Number(document.getElementById("goalInput").value||0);save();closeModal();render()}
+  if(act==="dedupe"){const before=countAll(data);data=dedupeAll(data);save();alert(`Verificação concluída. ${before-countAll(data)} duplicado(s) removido(s).`);render()}
+  if(act==="export"){download("kings-9.2.1-backup.json",JSON.stringify(data,null,2),"application/json")}
+ });
+}
+function openEntry(type){openModal(`<h2>${type==="in"?"Nova Entrada":"Nova Saída"}</h2><div class="field"><label>DESCRIÇÃO</label><input id="fDesc" placeholder="${type==="in"?"Pagamento - Cliente":"Aluguel da loja"}"></div><div class="field"><label>VALOR</label><input id="fValue" type="number" step="0.01" placeholder="0,00"></div><div class="field"><label>DATA</label><input id="fDate" type="date" value="2026-08-14"></div><button class="save" id="modalSave">Salvar</button>`);document.getElementById("modalSave").onclick=()=>{add("movements",{type,desc:document.getElementById("fDesc").value,value:Number(document.getElementById("fValue").value||0),date:document.getElementById("fDate").value});closeModal()}}
+function openClient(){openModal(`<h2>Novo Cliente</h2><div class="field"><label>NOME</label><input id="cName" placeholder="Nome completo"></div><div class="field"><label>TELEFONE</label><input id="cPhone" placeholder="(11) 99999-9999"></div><button class="save" id="modalSave">Salvar cliente</button>`);document.getElementById("modalSave").onclick=()=>{add("clients",{name:document.getElementById("cName").value,phone:document.getElementById("cPhone").value,spent:0,open:0});closeModal()}}
+function openExpense(){openModal(`<h2>Nova Despesa</h2><div class="field"><label>DESCRIÇÃO</label><input id="eDesc" placeholder="Aluguel da loja"></div><div class="field"><label>VALOR</label><input id="eValue" type="number" step="0.01"></div><div class="field"><label>CATEGORIA</label><select id="eCat"><option>Aluguel</option><option>Mercadorias</option><option>Contas Fixas</option><option>Cartão</option><option>Materiais</option><option>Folha de Pagamento</option><option>Outros</option></select></div><div class="field"><label>VENCIMENTO</label><input id="eDate" type="date" value="2026-08-14"></div><button class="save" id="modalSave">Salvar despesa</button>`);document.getElementById("modalSave").onclick=()=>{const e={desc:document.getElementById("eDesc").value,value:Number(document.getElementById("eValue").value||0),category:document.getElementById("eCat").value,date:document.getElementById("eDate").value,status:"A vencer"};add("expenses",e);data.movements.push({id:uid("m"),type:"out",desc:e.desc,value:e.value,date:e.date});data=dedupeAll(data);save();closeModal();render()}}
+function openRevenue(){openModal(`<h2>Nova Receita</h2><div class="field"><label>CLIENTE</label><input id="rClient" placeholder="João Silva"></div><div class="field"><label>DESCRIÇÃO</label><input id="rDesc" placeholder="Serviço"></div><div class="field"><label>VALOR</label><input id="rValue" type="number" step="0.01"></div><div class="field"><label>VENCIMENTO</label><input id="rDate" type="date" value="2026-08-20"></div><button class="save" id="modalSave">Salvar receita</button>`);document.getElementById("modalSave").onclick=()=>{add("revenues",{client:document.getElementById("rClient").value,desc:document.getElementById("rDesc").value,value:Number(document.getElementById("rValue").value||0),date:document.getElementById("rDate").value,status:"A receber"});closeModal()}}
+function countAll(d){return ["cuts","clients","revenues","expenses","movements"].reduce((a,k)=>a+(d[k]?.length||0),0)}
+function esc(v){return String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
+function brDate(v){if(!v)return "";const [y,m,d]=String(v).slice(0,10).split("-");return d&&m&&y?`${d}/${m}/${y}`:v}
+function iconFor(k){return ({Aluguel:"⌂",Mercadorias:"🛒","Contas Fixas":"●",Cartão:"▣",Materiais:"✂","Folha de Pagamento":"$"}[k]||"◆")}
+function download(name,text,type){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+bindGlobal();render();
+if("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js?v=921").catch(()=>{});

@@ -3,112 +3,59 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="kings-build" content="2026-08-14-kings-v9.2.1-definitivo"><meta name="theme-color" content="#0b0b0c">
+<meta name="theme-color" content="#08090a">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="KINGS">
-<link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="icon" href="favicon.png">
-<title>KINGS 9 • Gestão Financeira</title>
-<link rel="stylesheet" href="estilo.css?v=kings9v9.2.1">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="styles.css">
+<title>KINGS — Sistema Financeiro</title>
 </head>
 <body>
-<div class="app">
-<main id="home" class="page active">
-<header class="top"><div class="brand"><img class="logo" src="logo.png" alt="KINGS"><div><div class="small" id="date"></div><div class="title" id="appName">KINGS</div></div></div><button class="settings" onclick="show('settings')">⚙︎</button></header>
-<section class="hero"><div class="label">FATURAMENTO DE HOJE</div><div class="money" id="today">R$ 0,00</div><div class="accent"><span id="todayCount">0</span> cortes registrados</div><div class="progress"><i id="dayProgress"></i></div><div class="goal-line"><span id="dayGoalText">Meta diária não definida</span><span id="dayGoalPct">0%</span></div></section>
-<div class="cards"><div class="card"><div class="label">ÚLTIMOS 7 DIAS</div><div class="num" id="week">R$ 0,00</div><div class="sub" id="weekCount">0 cortes</div></div><div class="card"><div class="label">MÊS ATUAL</div><div class="num" id="month">R$ 0,00</div><div class="sub" id="monthCount">0 cortes</div><div class="progress"><i id="monthProgress"></i></div></div></div>
-<section class="v9-central"><div class="v9-central-head"><div><span>VISÃO FINANCEIRA</span><h2>Central Financeira</h2></div><button onclick="show('cash')">Ver caixa →</button></div><div class="v9-fin-grid"><div><small>Disponível</small><b id="v9Available">R$ 0,00</b></div><div><small>A receber</small><b id="v9Receivable">R$ 0,00</b></div><div><small>A pagar</small><b id="v9Payable">R$ 0,00</b></div><div><small>Lucro do mês</small><b id="v9Profit">R$ 0,00</b></div></div></section>
-<div class="quick-grid"><button class="quick" onclick="openCut()"><b>✂ Registrar corte</b><small>Entrada de faturamento</small></button><button class="quick out" onclick="openExpense()"><b>− Saída de caixa</b><small>Registrar despesa</small></button></div>
-<section class="section"><div class="section-head"><h2>Cortes recentes</h2><div class="fab-row"><button class="fab out" onclick="openExpense()">−</button><button class="fab" onclick="openCut()">+</button></div></div><div id="recent"></div></section>
-</main>
+<div id="app">
+  <header class="topbar">
+    <button class="icon-btn" data-action="menu" aria-label="Menu">☰</button>
+    <div class="brand">
+      <div class="brand-mark">♛</div>
+      <div><div class="brand-name">KINGS</div><div class="brand-sub">SISTEMA FINANCEIRO</div></div>
+    </div>
+    <button class="icon-btn" data-action="settings" aria-label="Configurações">⚙</button>
+  </header>
 
-<main id="reports" class="page"><h1>Relatórios</h1><p class="subtitle">Faturamento, despesas e resultado do período</p><div class="tabs"><button class="sel" onclick="setReportPeriod(this,'day')">Hoje</button><button onclick="setReportPeriod(this,'week')">7 dias</button><button onclick="setReportPeriod(this,'month')">Mês</button></div><div class="metric-grid"><div class="metric blue"><div class="m-label">Entradas</div><div class="m-value" id="rIn">R$ 0,00</div></div><div class="metric red"><div class="m-label">Saídas</div><div class="m-value" id="rOut">R$ 0,00</div></div><div class="metric green"><div class="m-label">Saldo líquido</div><div class="m-value" id="rNet">R$ 0,00</div></div><div class="metric"><div class="m-label">Cortes</div><div class="m-value" id="rCuts">0</div></div></div><div class="chart-card"><div class="chart-title">Entradas × Saídas</div><div class="bars" id="chart"></div><div class="legend"><span><i class="dot"></i>Entradas</span><span><i class="dot red"></i>Saídas</span></div></div></main>
+  <main id="main"></main>
 
-<main id="cash" class="page">
-<header class="cash-top"><div class="cash-brand"><img class="cash-logo" src="logo.png" alt="KINGS"><div><div class="cash-kicker">KINGS</div><h1>Caixa</h1><p>Controle de entradas e saídas</p></div></div><button class="cash-menu" onclick="show('settings')">⚙︎</button></header>
-<div class="quick-grid cash-quick"><button class="quick cash-in" onclick="openCut()"><span class="qicon">↑</span><span><b>Entrada rápida</b><small>Registrar entrada</small></span></button><button class="quick cash-out" onclick="openExpense()"><span class="qicon">↓</span><span><b>Saída rápida</b><small>Registrar saída</small></span></button></div>
-<div class="tabs cash-tabs"><button class="sel" onclick="setCashPeriod(this,'day')">Hoje</button><button onclick="setCashPeriod(this,'week')">7 dias</button><button onclick="setCashPeriod(this,'month')">Mês</button><button onclick="setCashPeriod(this,'all')">Tudo</button></div>
-<div class="cash-highlight"><div class="label">SALDO DO PERÍODO</div><div class="cash-highlight-value" id="cashBalance">R$ 0,00</div></div>
-<div class="cash-stat-grid">
-<div class="cash-stat sold"><span>Vendido</span><b id="cashSold">R$ 0,00</b></div>
-<div class="cash-stat expense"><span>Despesas</span><b id="cashExpenses">R$ 0,00</b></div>
-<div class="cash-stat received"><span>Recebido</span><b id="cashReceived">R$ 0,00</b></div>
-<div class="cash-stat paid"><span>Pago</span><b id="cashPaid">R$ 0,00</b></div>
-<div class="cash-stat quick-in-stat"><span>Entrada Rápida</span><b id="cashQuickIn">R$ 0,00</b></div>
-<div class="cash-stat quick-out-stat"><span>Saída Rápida</span><b id="cashQuickOut">R$ 0,00</b></div>
-</div>
-<div class="cash-total-row"><div><span>Entrada Total</span><b id="cashIn">R$ 0,00</b></div><div><span>Saída Total</span><b id="cashOut">R$ 0,00</b></div></div>
-<section class="section cash-movements"><div class="section-head"><h2>Movimentações</h2><div class="fab-row"><button class="fab out" onclick="openExpense()">−</button><button class="fab" onclick="openCut()">+</button></div></div><div id="cashList"></div></section></main>
-
-<main id="expenses" class="page"><h1>Despesas</h1><p class="subtitle">Registre e acompanhe tudo que sai do faturamento</p><div class="expense-total"><div class="label">SAÍDAS DO PERÍODO</div><div class="v" id="expensePageTotal">R$ 0,00</div></div><div class="expense-filter"><button class="sel" onclick="setExpensePeriod(this,'day')">Hoje</button><button onclick="setExpensePeriod(this,'week')">7 dias</button><button onclick="setExpensePeriod(this,'month')">Mês</button><button onclick="setExpensePeriod(this,'all')">Tudo</button></div><section class="section"><div class="section-head"><h2>Despesas registradas</h2><button class="fab out" onclick="openExpense()">+</button></div><div id="expenseList" class="list"></div><div class="empty" id="expenseEmpty"><div class="icon">↓</div><h3>Nenhuma despesa</h3><p>Use o + para registrar uma saída de caixa.</p></div></section></main>
-
-<main id="debt" class="page"><h1>Fiado</h1><p class="subtitle">Pagamentos pendentes por cliente</p><section class="outstanding"><div class="label">TOTAL A RECEBER</div><div class="value" id="debtTotal">R$ 0,00</div><b id="debtSub">0 cortes pendentes · 0 clientes</b></section><div id="debtList" class="list"></div><div class="empty" id="debtEmpty"><div class="icon">✓</div><h3>Sem pendências</h3><p>Marque Fiado ao registrar um corte para acompanhar aqui</p></div></main>
-
-<main id="clients" class="page"><h1>Clientes</h1><p class="subtitle" id="clientCount">0 clientes</p><div class="client-add"><input class="input" id="newClient" placeholder="Nome do cliente"><button class="save" onclick="addClient()">Adicionar</button></div><div class="search client-search" onclick="searchClients()">⌕ &nbsp; Buscar cliente</div><div id="clientList" class="list"></div><div class="empty" id="clientEmpty"><div class="icon">♙</div><h3>Nenhum cliente</h3><p>Cadastre clientes para deixá-los salvos no aplicativo.</p></div><section class="section"><button class="toolbar-btn" onclick="show('debt')">Ver fiados e pagamentos pendentes</button></section></main>
-
-<main id="revenue" class="page"><h1>Receitas</h1><p class="subtitle">Entradas gerais e recebimentos</p><div class="expense-total v9-revenue-total"><div class="label">RECEITAS DO PERÍODO</div><div class="v" id="revenueTotal">R$ 0,00</div></div><div class="expense-filter"><button class="sel" onclick="setRevenuePeriod(this,'month')">Mês</button><button onclick="setRevenuePeriod(this,'day')">Hoje</button><button onclick="setRevenuePeriod(this,'week')">7 dias</button><button onclick="setRevenuePeriod(this,'all')">Tudo</button></div><section class="section"><div class="section-head"><h2>Recebimentos</h2><button class="fab" onclick="openRevenue()">+</button></div><div id="revenueList" class="list"></div><div class="empty" id="revenueEmpty"><div class="icon">↑</div><h3>Nenhuma receita</h3><p>Registre uma entrada geral ou use o registro de corte.</p></div></section></main>
-
-<main id="calendar" class="page"><h1>Calendário</h1><p class="subtitle">Agenda financeira do mês</p><div class="calendar-head"><button onclick="moveCalendar(-1)">‹</button><b id="calTitle">Mês</b><button onclick="moveCalendar(1)">›</button></div><div class="calendar-grid" id="calendarGrid"></div><div class="calendar-legend"><span><i class="cal-dot in"></i>Entrada</span><span><i class="cal-dot out"></i>Saída</span><span><i class="cal-dot pend"></i>Pendente</span></div></main>
-
-<main id="more" class="page"><h1>Mais</h1><p class="subtitle">Ferramentas financeiras do KINGS</p><div class="v9-menu-grid"><button onclick="show('revenue')"><b>↑ Receitas</b><small>Entradas e recebimentos</small></button><button onclick="show('debt')"><b>◎ Fiado</b><small>Valores em aberto</small></button><button onclick="show('calendar')"><b>▦ Calendário</b><small>Vencimentos e movimentações</small></button><button onclick="show('reports')"><b>▥ Relatórios</b><small>Gráficos e resultados</small></button><button onclick="show('settings')"><b>⚙ Configurações</b><small>Serviços, barbeiros e metas</small></button></div></main>
-
-<main id="settings" class="page"><h1>Configurações</h1><p class="subtitle">Personalize o KINGS</p><div class="settings-list">
-<div class="setting-card"><h3>Nome da barbearia</h3><p>Nome exibido no aplicativo.</p><input class="input" id="cfgName" value="KINGS"></div>
-<div class="setting-card"><h3>Serviços e preços</h3><p>Valores usados no registro.</p><div class="two"><input class="input" id="cfgCorte" type="number" placeholder="Corte"><input class="input" id="cfgBarba" type="number" placeholder="Barba"></div><br><input class="input" id="cfgCombo" type="number" placeholder="Corte + Barba"></div>
-<div class="setting-card"><h3>Metas</h3><p>Defina suas metas de faturamento.</p><div class="two"><input class="input" id="cfgMetaDia" type="number" placeholder="Meta diária"><input class="input" id="cfgMetaMes" type="number" placeholder="Meta mensal"></div></div>
-<div class="setting-card"><h3>Barbeiros</h3><p>Cadastre os barbeiros para selecionar no corte.</p><input class="input" id="newBarber" placeholder="Nome do barbeiro"><button class="save" onclick="addBarber()">Adicionar barbeiro</button><div class="barber-list" id="barberList"></div></div>
-<div class="setting-card"><button class="save" style="margin:0" onclick="saveSettings()">Salvar configurações</button></div>
-<div class="setting-card"><button class="save danger" style="margin:0" onclick="clearData()">Apagar todos os dados</button></div>
-</div></main>
-
-<nav class="nav"><button class="active" onclick="show('home',this)"><span class="ni">✂</span>Início</button><button onclick="show('cash',this)"><span class="ni">▤</span>Caixa</button><button onclick="show('expenses',this)"><span class="ni">▣</span>Despesas</button><button onclick="show('clients',this)"><span class="ni">♙</span>Clientes</button><button onclick="show('more',this)"><span class="ni">•••</span>Mais</button></nav>
+  <nav class="bottom-nav" id="bottomNav">
+    <button data-nav="home"><span>⌂</span>Início</button>
+    <button data-nav="cash"><span>▤</span>Caixa</button>
+    <button data-nav="receivables"><span>▣</span>Receitas</button>
+    <button data-nav="expenses"><span>▧</span>Despesas</button>
+    <button data-nav="clients"><span>♙</span>Clientes</button>
+    <button data-nav="more"><span>•••</span>Mais</button>
+  </nav>
 </div>
 
-<div class="modal" id="modalCut" onclick="if(event.target===this)closeModal('modalCut')"><div class="sheet"><button class="close" onclick="closeModal('modalCut')">×</button><div class="handle"></div><h2>Registrar corte</h2>
-<label class="field-label">VALOR</label><input class="input" id="price" type="number" inputmode="decimal">
-<label class="field-label">SERVIÇO</label><div class="services" id="serviceButtons"></div>
-<label class="field-label">FORMA DE PAGAMENTO</label><div class="pay-grid" id="payButtons"><button class="pay sel" onclick="choosePay(this,'pix')">Pix</button><button class="pay" onclick="choosePay(this,'dinheiro')">Dinheiro</button><button class="pay" onclick="choosePay(this,'cartao')">Cartão</button><button class="pay" onclick="choosePay(this,'fiado')">Fiado</button></div>
-<label class="field-label">CLIENTE</label><input class="input" id="client" list="clientSuggestions" placeholder="Nome do cliente"><datalist id="clientSuggestions"></datalist>
-<label class="field-label">BARBEIRO</label><select class="input" id="barber"></select>
-<label class="field-label">HORÁRIO DO CORTE</label><input class="input" id="cutTime" type="datetime-local">
-<button class="save" onclick="saveCut()">Salvar corte</button></div></div>
+<div id="drawer" class="drawer">
+  <div class="drawer-card">
+    <button class="close" data-action="closeDrawer">×</button>
+    <div class="drawer-title">KINGS</div>
+    <button data-nav="home">⌂ Início</button>
+    <button data-nav="cash">▤ Caixa</button>
+    <button data-nav="receivables">▣ Receitas</button>
+    <button data-nav="expenses">▧ Despesas</button>
+    <button data-nav="clients">♙ Clientes</button>
+    <button data-nav="calendar">◫ Calendário</button>
+    <button data-nav="reports">⌁ Relatórios</button>
+    <button data-nav="categories">◉ Despesas por categoria</button>
+    <button data-nav="more">••• Mais</button>
+  </div>
+</div>
 
-<div class="modal" id="modalExpense" onclick="if(event.target===this)closeModal('modalExpense')"><div class="sheet"><button class="close" onclick="closeModal('modalExpense')">×</button><div class="handle"></div><h2>Saída de caixa</h2>
-<label class="field-label">VALOR</label><input class="input" id="expenseValue" type="number" inputmode="decimal" placeholder="0,00">
-<label class="field-label">DESCRIÇÃO DA DESPESA</label><input class="input" id="expenseDesc" placeholder="Ex.: material, aluguel, energia">
-<label class="field-label">CATEGORIA</label><select class="input" id="expenseCat"><option>Material</option><option>Aluguel</option><option>Energia</option><option>Água</option><option>Comissão</option><option>Marketing</option><option>Outros</option></select>
-<label class="field-label">DATA E HORÁRIO</label><input class="input" id="expenseTime" type="datetime-local">
-<button class="save" style="background:#9d3e2f" onclick="saveExpense()">Registrar saída</button></div></div>
-
-<div class="modal" id="modalEditClient" onclick="if(event.target===this)closeModal('modalEditClient')"><div class="sheet"><button class="close" onclick="closeModal('modalEditClient')">×</button><div class="handle"></div><h2>Editar cliente</h2><input type="hidden" id="oldClient"><label class="field-label">NOME</label><input class="input" id="editClientName"><button class="save" onclick="saveClientEdit()">Salvar cliente</button></div></div>
-
-<div class="modal" id="modalRevenue" onclick="if(event.target===this)closeModal('modalRevenue')"><div class="sheet"><button class="close" onclick="closeModal('modalRevenue')">×</button><div class="handle"></div><h2>Nova receita</h2><label class="field-label">DESCRIÇÃO</label><input class="input" id="revDesc" placeholder="Ex.: venda de produto, sinal, serviço"><label class="field-label">VALOR</label><input class="input" id="revValue" type="number" inputmode="decimal" placeholder="0,00"><label class="field-label">CATEGORIA</label><select class="input" id="revCat"><option>Serviço</option><option>Produto</option><option>Sinal</option><option>Outros</option></select><label class="field-label">FORMA DE PAGAMENTO</label><select class="input" id="revPay"><option>Pix</option><option>Dinheiro</option><option>Cartão</option><option>Transferência</option></select><label class="field-label">DATA</label><input class="input" id="revDate" type="datetime-local"><button class="save" onclick="saveRevenue()">Registrar receita</button></div></div>
-
-<div class="modal" id="modalExpenseV9" onclick="if(event.target===this)closeModal('modalExpenseV9')"><div class="sheet"><button class="close" onclick="closeModal('modalExpenseV9')">×</button><div class="handle"></div><h2>Nova despesa</h2><label class="field-label">DESCRIÇÃO</label><input class="input" id="v9ExpDesc" placeholder="Ex.: aluguel, material, cartão"><label class="field-label">VALOR</label><input class="input" id="v9ExpValue" type="number" inputmode="decimal" placeholder="0,00"><div class="two"><div><label class="field-label">TIPO</label><select class="input" id="v9ExpType"><option>Fixa</option><option>Variável</option><option>Cartão</option><option>Empréstimo</option><option>Imposto</option><option>Outros</option></select></div><div><label class="field-label">CATEGORIA</label><select class="input" id="v9ExpCat"><option>Moradia</option><option>Operacional</option><option>Material</option><option>Cartão</option><option>Comissão</option><option>Marketing</option><option>Impostos</option><option>Outros</option></select></div></div><label class="field-label">VENCIMENTO</label><input class="input" id="v9ExpDue" type="date"><div class="two"><div><label class="field-label">PARCELA</label><input class="input" id="v9ExpPart" type="number" min="1" value="1"></div><div><label class="field-label">TOTAL PARCELAS</label><input class="input" id="v9ExpParts" type="number" min="1" value="1"></div></div><label class="field-label">RECORRÊNCIA</label><select class="input" id="v9ExpRec"><option>Não recorrente</option><option>Mensal</option><option>Semanal</option><option>Anual</option></select><label class="field-label">STATUS</label><select class="input" id="v9ExpStatus"><option value="pending">Pendente</option><option value="paid">Paga</option></select><label class="field-label">DATA DO PAGAMENTO</label><input class="input" id="v9ExpPaid" type="date"><button class="save" style="background:#9d3e2f" onclick="saveExpenseV9()">Salvar despesa</button></div></div>
-
-
-<script src="app.js?v=kings9v9.2.1"></script>
-<script>
-const KINGS_BUILD='kings9-v9.2.1-20260814';
-(async()=>{
-  try{
-    const key='kings-build'; const old=localStorage.getItem(key);
-    if(old!==KINGS_BUILD){
-      const regs=await navigator.serviceWorker?.getRegistrations?.()||[];
-      for(const r of regs) await r.unregister();
-      if('caches' in window){ const keys=await caches.keys(); await Promise.all(keys.filter(k=>k.startsWith('kings-')).map(k=>caches.delete(k))); }
-      localStorage.setItem(key,KINGS_BUILD);
-      location.replace(location.pathname+'?v='+encodeURIComponent(KINGS_BUILD)+'#home');
-      return;
-    }
-    if('serviceWorker' in navigator){
-      await navigator.serviceWorker.register('./sw.js?v='+KINGS_BUILD,{updateViaCache:'none'});
-      await navigator.serviceWorker.ready;
-    }
-  }catch(e){ console.warn('KINGS cache update',e); }
-})();
-</script>
+<div id="modal" class="modal">
+  <div class="modal-card">
+    <button class="close" data-action="closeModal">×</button>
+    <div id="modalBody"></div>
+  </div>
+</div>
+<script src="app.js"></script>
 </body>
 </html>

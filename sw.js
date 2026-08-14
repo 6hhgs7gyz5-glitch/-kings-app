@@ -1,29 +1,8 @@
-const CACHE_NAME = "kings-v9.2.1-20260814";
-const CORE = [
-  "./", "./index.html", "./estilo.css?v=kings9v9.2.1", "./app.js?v=kings9v9.2.1",
-  "./manifest.json", "./manifest.webmanifest", "./logo.png", "./icon-192.png",
-  "./icon-512.png", "./apple-touch-icon.png", "./favicon.png"
-];
-self.addEventListener("install", event => {
-  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(CORE).catch(()=>{})).then(()=>self.skipWaiting()));
+const CACHE="kings-9.2.1-v1";
+const ASSETS=["./","./index.html","./styles.css","./app.js","./manifest.webmanifest"];
+self.addEventListener("install",e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)))});
+self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
+self.addEventListener("fetch",e=>{
+  if(e.request.method!=="GET")return;
+  e.respondWith(fetch(e.request).then(r=>{const copy=r.clone();caches.open(CACHE).then(c=>c.put(e.request,copy));return r}).catch(()=>caches.match(e.request)));
 });
-self.addEventListener("activate", event => {
-  event.waitUntil((async()=>{
-    const keys=await caches.keys();
-    await Promise.all(keys.filter(k=>k.startsWith("kings-") && k!==CACHE_NAME).map(k=>caches.delete(k)));
-    await self.clients.claim();
-  })());
-});
-self.addEventListener("fetch", event => {
-  const req=event.request; if(req.method!=="GET") return;
-  const url=new URL(req.url); if(url.origin!==location.origin) return;
-  if(req.mode==='navigate' || req.destination==='document'){
-    event.respondWith(fetch(req,{cache:'no-store'}).then(res=>{
-      const copy=res.clone(); caches.open(CACHE_NAME).then(c=>c.put("./index.html",copy)); return res;
-    }).catch(()=>caches.match("./index.html"))); return;
-  }
-  event.respondWith(fetch(req,{cache:'no-store'}).then(res=>{
-    const copy=res.clone(); caches.open(CACHE_NAME).then(c=>c.put(req,copy)); return res;
-  }).catch(()=>caches.match(req)));
-});
-self.addEventListener('message', e=>{ if(e.data==='SKIP_WAITING') self.skipWaiting(); });
