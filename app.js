@@ -87,3 +87,205 @@ function show(id,btn){document.querySelectorAll('.page').forEach(p=>p.classList.
 function render(){document.getElementById('appName').textContent=cfg.name;renderHome();renderReports();renderCash();renderExpenses();renderDebt();renderClients();renderCentral();renderRevenue()}
 function renderHome(){let now=new Date(),pDay=periodFilter('day'),pWeek=periodFilter('week'),pMonth=periodFilter('month'),tc=cuts.filter(c=>inPeriod(c.date,pDay)),wc=cuts.filter(c=>inPeriod(c.date,pWeek)),mc=cuts.filter(c=>inPeriod(c.date,pMonth));let today=total(tc),week=total(wc),month=total(mc);document.getElementById('today').textContent=brl(today);document.getElementById('todayCount').textContent=tc.length;document.getElementById('week').textContent=brl(week);document.getElementById('weekCount').textContent=wc.length+' cortes';document.getElementById('month').textContent=brl(month);document.getElementById('monthCount').textContent=mc.length+' cortes';let dp=cfg.metaDia?Math.min(100,today/cfg.metaDia*100):0,mp=cfg.metaMes?Math.min(100,month/cfg.metaMes*100):0;document.getElementById('dayProgress').style.width=dp+'%';document.getElementById('monthProgress').style.width=mp+'%';document.getElementById('dayGoalText').textContent=cfg.metaDia?'Meta diária '+brl(cfg.metaDia):'Meta diária não definida';document.getElementById('dayGoalPct').textContent=Math.round(dp)+'%';document.getElementById('recent').innerHTML=cuts.length?`<div class="list">${cuts.slice(0,6).map(c=>cutRow(c)).join('')}</div>`:`<div class="empty"><div class="icon">✂️</div><h3>Nenhum corte ainda</h3><p>Registre seu primeiro corte usando o +</p></div>`}
 saveAllV9();renderCentral();
+
+
+/* KINGS 9.1 — correções de estabilidade, caixa, despesas, clientes e cache */
+(function(){
+  'use strict';
+
+  // Evita falhas quando o app encontra dados antigos/incompletos no localStorage.
+  function safeArray(key){
+    try { const v=JSON.parse(localStorage.getItem(key)||'[]'); return Array.isArray(v)?v:[]; }
+    catch(e){ return []; }
+  }
+  function safeObject(key, fallback){
+    try { const v=JSON.parse(localStorage.getItem(key)||'null'); return v && typeof v==='object' ? v : fallback; }
+    catch(e){ return fallback; }
+  }
+
+  // Migração idempotente: preserva dados já cadastrados e normaliza despesas.
+  try {
+    const ex=safeArray('kings_expenses_v3').map(function(e){
+      e=Object.assign({},e);
+      e.value=Number(e.value ?? e.amount ?? e.valor ?? 0)||0;
+      e.desc=String(e.desc ?? e.description ?? e.descricao ?? '').trim();
+      e.cat=String(e.cat ?? e.category ?? e.categoria ?? 'Outros');
+      e.type=String(e.type ?? 'Variável');
+      e.dueDate=e.dueDate || (e.date ? String(e.date).slice(0,10) : new Date().toISOString().slice(0,10));
+      e.installment=Math.max(1,Number(e.installment)||1);
+      e.totalInstallments=Math.max(e.installment,Number(e.totalInstallments)||1);
+      e.recurrence=e.recurrence || 'Não recorrente';
+      e.status=e.status==='pending' ? 'pending' : 'paid';
+      e.paidDate=e.status==='paid' ? (e.paidDate || e.date || new Date().toISOString()) : null;
+      e.date=e.date || (e.paidDate || e.dueDate);
+      return e;
+    });
+    localStorage.setItem('kings_expenses_v3',JSON.stringify(ex));
+  } catch(e){}
+
+  // Impede duplo registro acidental ao tocar rapidamente em salvar.
+  window.__kingsSaveLock = window.__kingsSaveLock || {};
+  function once(key, fn){
+    const now=Date.now();
+    if(window.__kingsSaveLock[key] && now-window.__kingsSaveLock[key]<700) return;
+    window.__kingsSaveLock[key]=now;
+    fn();
+  }
+
+  // Expõe uma função de manutenção simples para depuração local.
+  window.KINGS9 = window.KINGS9 || {};
+  window.KINGS9.version='9.1.0';
+  window.KINGS9.storage={
+    cuts:'kings_cuts_v3',
+    expenses:'kings_expenses_v3',
+    config:'kings_cfg_v3',
+    clients:'kings_clients_v1',
+    revenues:'kings_revenues_v9'
+  };
+
+  // Corrige registro do Service Worker: atualização imediata e limpeza de cache antigo.
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('./sw.js?v=kings9.1.0',{updateViaCache:'none'})
+      .then(function(reg){ try{reg.update();}catch(e){} })
+      .catch(function(){});
+  }
+})();
+
+
+
+/* KINGS 9.2 — deduplicação automática segura */
+(function(){
+  'use strict';
+
+  function readArray(key){
+    try {
+      const v=JSON.parse(localStorage.getItem(key)||'[]');
+      return Array.isArray(v)?v:[];
+    } catch(e){ return []; }
+  }
+  function writeArray(key,v){ localStorage.setItem(key,JSON.stringify(v)); }
+
+  function normText(v){
+    return String(v ?? '').trim().replace(/\s+/g,' ').toLocaleLowerCase('pt-BR');
+  }
+  function money(v){
+    const n=Number(v ?? 0);
+    return Number.isFinite(n) ? Math.round(n*100)/100 : 0;
+  }
+  function dateMs(v){
+    const n=new Date(v).getTime();
+    return Number.isFinite(n)?n:0;
+  }
+  function dateDay(v){
+    const d=new Date(v);
+    return Number.isFinite(d.getTime()) ? d.toISOString().slice(0,10) : '';
+  }
+
+  // Mantém o registro mais recente quando houver cópias idênticas.
+  function uniqueBy(arr,keyFn){
+    const seen=new Set(), out=[];
+    for(let i=arr.length-1;i>=0;i--){
+      const k=keyFn(arr[i]);
+      if(!seen.has(k)){ seen.add(k); out.push(arr[i]); }
+    }
+    return out.reverse();
+  }
+
+  // Cortes: só remove duplicatas com os mesmos dados essenciais.
+  function dedupeCuts(){
+    const a=readArray('kings_cuts_v3');
+    return uniqueBy(a,c=>{
+      const payment=normText(c.payment||'');
+      const barber=normText(c.barber||'');
+      const client=normText(c.client||'');
+      const dt=dateMs(c.date);
+      const minute=dt ? Math.floor(dt/60000) : 0;
+      return [client,money(c.price),payment,barber,minute,!!c.fiado].join('|');
+    });
+  }
+
+  // Clientes: normaliza espaços/maiúsculas e mantém apenas um cadastro por nome.
+  function dedupeClients(){
+    const a=readArray('kings_clients_v1');
+    const out=[],seen=new Set();
+    for(const c of a){
+      const original=String(c??'').trim().replace(/\s+/g,' ');
+      const k=normText(original);
+      if(!k||seen.has(k)) continue;
+      seen.add(k); out.push(original);
+    }
+    return out;
+  }
+
+  // Receitas: ID é prioridade; sem ID, usa combinação de dados.
+  function dedupeRevenues(){
+    const a=readArray('kings_revenues_v9');
+    return uniqueBy(a,r=>{
+      if(r.id!=null) return 'id:'+String(r.id);
+      return ['rev',normText(r.desc),money(r.value),normText(r.cat),normText(r.pay),dateMs(r.date)].join('|');
+    });
+  }
+
+  // Despesas: usa ID quando existente; sem ID, combinação de descrição/valor/categoria/
+  // tipo/vencimento/parcela/status. Assim, despesas legítimas iguais em datas diferentes não somem.
+  function dedupeExpenses(){
+    const a=readArray('kings_expenses_v3');
+    return uniqueBy(a,e=>{
+      if(e.id!=null) return 'id:'+String(e.id);
+      return [
+        'exp',normText(e.desc),money(e.value),normText(e.cat),normText(e.type),
+        String(e.dueDate||dateDay(e.date)),String(e.installment||1),
+        String(e.totalInstallments||1),normText(e.recurrence),normText(e.status)
+      ].join('|');
+    });
+  }
+
+  function reconcileClients(clients,cuts){
+    const out=clients.slice(), seen=new Set(out.map(normText));
+    for(const c of cuts){
+      const n=String(c.client??'').trim().replace(/\s+/g,' ');
+      const k=normText(n);
+      if(n && !seen.has(k)){ seen.add(k); out.unshift(n); }
+    }
+    return out;
+  }
+
+  function runDedup(){
+    const cuts=dedupeCuts();
+    const expenses=dedupeExpenses();
+    const revenues=dedupeRevenues();
+    const clients=reconcileClients(dedupeClients(),cuts);
+
+    writeArray('kings_cuts_v3',cuts);
+    writeArray('kings_expenses_v3',expenses);
+    writeArray('kings_revenues_v9',revenues);
+    writeArray('kings_clients_v1',clients);
+
+    // Registra somente estatísticas, sem apagar outros dados/configurações.
+    const stats={
+      version:'9.2.0',
+      cuts:cuts.length,
+      expenses:expenses.length,
+      revenues:revenues.length,
+      clients:clients.length,
+      at:new Date().toISOString()
+    };
+    localStorage.setItem('kings_dedupe_v92',JSON.stringify(stats));
+    return stats;
+  }
+
+  // Executa uma vez por carregamento e depois permite executar manualmente.
+  try { window.KINGS92_STATS=runDedup(); } catch(e) { window.KINGS92_STATS={error:String(e)}; }
+
+  window.KINGS92=window.KINGS92||{};
+  window.KINGS92.version='9.2.0';
+  window.KINGS92.deduplicate=runDedup;
+
+  // Atualiza o app imediatamente após a troca do arquivo.
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.getRegistrations().then(function(regs){
+      regs.forEach(function(r){ try{r.update();}catch(e){} });
+    }).catch(function(){});
+  }
+})();
+
