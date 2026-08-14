@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="kings-build" content="2026-08-14-kings-v9.1-definitivo"><meta name="theme-color" content="#0b0b0c">
+<meta name="kings-build" content="2026-08-14-kings-v9.2-definitivo"><meta name="theme-color" content="#0b0b0c">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="KINGS">
@@ -11,7 +11,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="favicon.png">
 <title>KINGS 9 • Gestão Financeira</title>
-<link rel="stylesheet" href="estilo.css?v=kings9v9.1">
+<link rel="stylesheet" href="estilo.css?v=kings9v9.2">
 </head>
 <body>
 <div class="app">
@@ -89,22 +89,50 @@
 <div class="modal" id="modalExpenseV9" onclick="if(event.target===this)closeModal('modalExpenseV9')"><div class="sheet"><button class="close" onclick="closeModal('modalExpenseV9')">×</button><div class="handle"></div><h2>Nova despesa</h2><label class="field-label">DESCRIÇÃO</label><input class="input" id="v9ExpDesc" placeholder="Ex.: aluguel, material, cartão"><label class="field-label">VALOR</label><input class="input" id="v9ExpValue" type="number" inputmode="decimal" placeholder="0,00"><div class="two"><div><label class="field-label">TIPO</label><select class="input" id="v9ExpType"><option>Fixa</option><option>Variável</option><option>Cartão</option><option>Empréstimo</option><option>Imposto</option><option>Outros</option></select></div><div><label class="field-label">CATEGORIA</label><select class="input" id="v9ExpCat"><option>Moradia</option><option>Operacional</option><option>Material</option><option>Cartão</option><option>Comissão</option><option>Marketing</option><option>Impostos</option><option>Outros</option></select></div></div><label class="field-label">VENCIMENTO</label><input class="input" id="v9ExpDue" type="date"><div class="two"><div><label class="field-label">PARCELA</label><input class="input" id="v9ExpPart" type="number" min="1" value="1"></div><div><label class="field-label">TOTAL PARCELAS</label><input class="input" id="v9ExpParts" type="number" min="1" value="1"></div></div><label class="field-label">RECORRÊNCIA</label><select class="input" id="v9ExpRec"><option>Não recorrente</option><option>Mensal</option><option>Semanal</option><option>Anual</option></select><label class="field-label">STATUS</label><select class="input" id="v9ExpStatus"><option value="pending">Pendente</option><option value="paid">Paga</option></select><label class="field-label">DATA DO PAGAMENTO</label><input class="input" id="v9ExpPaid" type="date"><button class="save" style="background:#9d3e2f" onclick="saveExpenseV9()">Salvar despesa</button></div></div>
 
 
-<script src="app.js?v=kings9v9.1"></script>
+<script src="app.js?v=kings9v9.2"></script>
 <script>
-const KINGS_BUILD='kings9-v9.1-20260814';
+const KINGS_BUILD='kings9-v9.2-20260814';
 (async()=>{
   try{
-    const key='kings-build'; const old=localStorage.getItem(key);
+    const buildKey='kings-build';
+    const swUrl='./sw.js?v=kings9-v9.2-20260814';
+    const old=localStorage.getItem(buildKey);
+
+    // Remove registrations from previous KINGS builds and their caches.
+    if('serviceWorker' in navigator){
+      const regs=await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r=>r.unregister()));
+    }
+    if('caches' in window){
+      const keys=await caches.keys();
+      await Promise.all(keys.filter(k=>k.startsWith('kings-') || k.startsWith('kings9-')).map(k=>caches.delete(k)));
+    }
+
+    // Force the browser to re-request the current document after a build change.
     if(old!==KINGS_BUILD){
-      const regs=await navigator.serviceWorker?.getRegistrations?.()||[];
-      for(const r of regs) await r.unregister();
-      if('caches' in window){ const keys=await caches.keys(); await Promise.all(keys.filter(k=>k.startsWith('kings-')).map(k=>caches.delete(k))); }
-      localStorage.setItem(key,KINGS_BUILD);
-      location.replace(location.pathname+'?v='+encodeURIComponent(KINGS_BUILD)+'#home');
+      localStorage.setItem(buildKey,KINGS_BUILD);
+      const u=new URL(location.href);
+      u.searchParams.set('v',KINGS_BUILD);
+      u.hash='home';
+      location.replace(u.href);
       return;
     }
+
     if('serviceWorker' in navigator){
-      await navigator.serviceWorker.register('./sw.js?v='+KINGS_BUILD,{updateViaCache:'none'});
+      const reg=await navigator.serviceWorker.register(swUrl,{updateViaCache:'none'});
+      if(reg.waiting){
+        reg.waiting.postMessage('SKIP_WAITING');
+      }
+      reg.addEventListener('updatefound',()=>{
+        const worker=reg.installing;
+        if(worker){
+          worker.addEventListener('statechange',()=>{
+            if(worker.state==='installed' && navigator.serviceWorker.controller){
+              worker.postMessage('SKIP_WAITING');
+            }
+          });
+        }
+      });
       await navigator.serviceWorker.ready;
     }
   }catch(e){ console.warn('KINGS cache update',e); }

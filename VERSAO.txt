@@ -1,0 +1,30 @@
+KINGS 9 v9.2 FINAL — pacote para GitHub Pages
+
+Conteúdo na raiz do ZIP:
+- index.html
+- app.js
+- estilo.css
+- manifest.json
+- manifest.webmanifest
+- sw.js
+- service-worker.js
+- logo.png e ícones
+
+Correção incluída:
+- build/cache renovado para KINGS 9 v9.2;
+- desregistro de Service Workers antigos;
+- remoção de caches antigos KINGS/KINGS9;
+- registro do novo SW com updateViaCache=none;
+- navegação HTML sempre em rede, com fallback offline;
+- atualização de assets com cache-busting;
+- estrutura compatível com publicação na raiz do GitHub Pages.
+
+Publicação:
+1. Descompacte este ZIP.
+2. Substitua os arquivos da raiz do repositório pelos arquivos extraídos.
+3. Faça commit/push na branch que o GitHub Pages está usando (no seu caso, principal).
+4. Aguarde a implantação terminar.
+5. No iPhone, abra novamente o endereço do site em uma aba nova.
+6. Se o ícone já estiver instalado na Tela de Início, remova o atalho antigo e adicione novamente após a primeira abertura da v9.2.
+
+Não coloque a pasta KINGS9_V9_DEFINITIVA dentro de outra pasta do repositório: os arquivos deste ZIP já estão preparados para ficar na raiz.
