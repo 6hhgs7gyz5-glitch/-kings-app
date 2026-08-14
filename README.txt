@@ -1,19 +1,19 @@
-KINGS 9.2.1
-=========
-Versão responsiva inspirada no layout enviado: Início, Caixa, Despesas, Clientes, Receitas, Calendário, Relatórios e Configurações.
+KINGS 9.2.1 — PACOTE CORRETO
 
-Destaques:
-- Layout mobile-first com navegação inferior.
-- Cadastro de cortes, receitas, despesas e clientes.
-- Controle de fiado, contas pendentes e despesas pagas.
-- Calendário financeiro.
-- Relatórios de entradas x saídas.
-- Persistência em localStorage.
-- Rotina automática de deduplicação de cortes, clientes, receitas e despesas ao abrir e após novos cadastros.
+Esta versão é baseada no KINGS 9 definitivo completo (não na versão simplificada anterior).
 
-Substituição:
-1. Extraia o ZIP.
-2. Substitua os arquivos do site pelos arquivos desta pasta.
-3. Mantenha o manifest.json e sw.js na raiz.
-4. O service worker foi atualizado para 9.2.1, usa cache versionado, limpa caches antigos, assume o controle imediatamente e força a atualização do index.
-5. Se o iPhone ainda mostrar a versão anterior, abra o site uma vez, feche a aba e abra novamente. Em último caso, remova os dados do site em Ajustes > Safari > Avançado > Dados dos Sites e abra o site de novo.
+Correções 9.2.1:
+- Mantém o layout completo, logo e funcionalidades do KINGS 9 definitivo.
+- Cache/service worker atualizado para kings-v9.2.1-20260814.
+- Limpa automaticamente caches antigos do KINGS.
+- Desregistra versões antigas ao detectar mudança de build.
+- Força atualização do index/app/estilos com query string 9.2.1.
+- Mantém deduplicação automática de cortes, clientes, receitas e despesas.
+
+SUBSTITUIÇÃO:
+1. Extraia TODOS os arquivos deste ZIP diretamente na raiz do site.
+2. Confirme que index.html, app.js, estilo.css, sw.js e service-worker.js estão na mesma pasta.
+3. Publique/substitua os arquivos no GitHub Pages.
+4. No iPhone, abra o endereço do site novamente. A própria aplicação remove o cache kings-* antigo e registra o novo service worker.
+
+IMPORTANTE: este ZIP substitui o pacote 9.2.1 simplificado anterior. O pacote correto tem logo.png, estilo.css, service-worker.js, sw.js, app.js e os demais arquivos do KINGS definitivo.
