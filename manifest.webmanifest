@@ -1,0 +1,9 @@
+{
+  "name":"KINGS 9 — Minhas Finanças",
+  "short_name":"KINGS 9",
+  "start_url":"./",
+  "display":"standalone",
+  "background_color":"#080909",
+  "theme_color":"#080909",
+  "lang":"pt-BR"
+}
