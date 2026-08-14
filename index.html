@@ -1,36 +1,42 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#090909">
-  <title>KINGS 9 — Minhas Finanças</title>
-  <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="style.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#090909">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>KINGS 9</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="style.css?v=9.2">
 </head>
 <body>
 <div id="app">
-  <header class="topbar">
-    <button class="icon-btn" id="menuBtn">☰</button>
-    <div class="brand"><span class="crown">♛</span><span>KINGS</span></div>
-    <button class="icon-btn" id="bellBtn">♧</button>
+  <header class="header">
+    <div class="header-left">
+      <img src="assets/logo.png" class="logo" alt="KINGS">
+      <div>
+        <div class="date" id="todayLabel"></div>
+        <h1>KINGS</h1>
+      </div>
+    </div>
+    <button class="round settings" id="settingsBtn">⚙</button>
   </header>
 
   <main id="view"></main>
 
   <nav class="bottom-nav">
-    <button data-tab="inicio" class="active"><span>⌂</span>Início</button>
-    <button data-tab="caixa"><span>▣</span>Caixa</button>
-    <button data-tab="receitas"><span>▤</span>Receitas</button>
-    <button data-tab="despesas"><span>▧</span>Despesas</button>
-    <button data-tab="clientes"><span>♙</span>Clientes</button>
-    <button data-tab="mais"><span>•••</span>Mais</button>
+    <button data-tab="inicio" class="active"><span>✂</span><b>Início</b></button>
+    <button data-tab="relatorios"><span>▥</span><b>Relatórios</b></button>
+    <button data-tab="caixa"><span>▤</span><b>Caixa</b></button>
+    <button data-tab="despesas"><span>▣</span><b>Despesas</b></button>
+    <button data-tab="clientes"><span>♙</span><b>Clientes</b></button>
   </nav>
 </div>
 
-<div class="modal-backdrop" id="modalBackdrop">
-  <div class="modal" id="modal"></div>
+<div class="sheet hidden" id="sheet">
+  <div class="sheet-card" id="sheetCard"></div>
 </div>
-<script src="app.js"></script>
+<script src="app.js?v=9.2"></script>
 </body>
 </html>

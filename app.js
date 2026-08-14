@@ -1,158 +1,109 @@
+const $=s=>document.querySelector(s);
+const state=JSON.parse(localStorage.getItem("kings9")||'{"entries":[],"expenses":[],"clients":[],"goal":0}');
+const money=v=>new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(Number(v)||0);
+const save=()=>localStorage.setItem("kings9",JSON.stringify(state));
+const today=new Date();
+$("#todayLabel").textContent=today.toLocaleDateString("pt-BR",{weekday:"long",day:"2-digit",month:"2-digit"}).toUpperCase();
 
-const KEY="kings9-data";
-const seed={
- entries:[
-  {id:1,desc:"Pagamento - João Silva",amount:120,date:"2026-08-14",type:"Pix"},
-  {id:2,desc:"Serviço - Maria Santos",amount:80,date:"2026-08-13",type:"Serviço"},
-  {id:3,desc:"Pix - Pedro Oliveira",amount:150,date:"2026-08-13",type:"Pix"}
- ],
- exits:[
-  {id:4,desc:"Aluguel da loja",amount:500,date:"2026-08-14",category:"Aluguel",type:"Fixa",installment:"1/1"},
-  {id:5,desc:"Material de limpeza",amount:45,date:"2026-08-13",category:"Materiais",type:"Variável",installment:"1/1"}
- ],
- expenses:[
-  {id:10,desc:"Compra de Produtos",amount:1250,due:"2026-08-15",category:"Mercadorias",type:"Variável",installments:2,current:1,status:"A vencer"},
-  {id:11,desc:"Conta de Luz",amount:180,due:"2026-08-16",category:"Contas Fixas",type:"Fixa",installments:1,current:1,status:"A vencer"},
-  {id:12,desc:"Cartão Nubank",amount:835,due:"2026-08-25",category:"Cartão",type:"Cartão",installments:3,current:2,status:"A vencer"}
- ],
- clients:[
-  {id:20,name:"João Silva",phone:"(11) 99999-9999",open:150,total:850},
-  {id:21,name:"Maria Santos",phone:"(11) 98888-8888",open:80,total:820},
-  {id:22,name:"Pedro Oliveira",phone:"(11) 97777-7777",open:200,total:1200},
-  {id:23,name:"Lucas Mendes",phone:"(11) 96666-6666",open:0,total:430}
- ],
- receivables:[
-  {id:30,client:"João Silva",amount:150,due:"2026-08-20",desc:"Serviço de Barba",status:"A receber"},
-  {id:31,client:"Maria Santos",amount:80,due:"2026-08-18",desc:"Coloração",status:"A receber"},
-  {id:32,client:"Pedro Oliveira",amount:200,due:"2026-08-25",desc:"Corte + Barba",status:"A receber"}
- ]
-};
-let data=JSON.parse(localStorage.getItem(KEY)||"null")||seed;
-let tab="inicio";
-const money=n=>new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(n||0);
-const sum=a=>a.reduce((s,x)=>s+Number(x.amount||0),0);
-const save=()=>localStorage.setItem(KEY,JSON.stringify(data));
-const today=new Date().toISOString().slice(0,10);
-
-function render(){
+function totals(){
+ const ins=state.entries.reduce((s,x)=>s+Number(x.amount||0),0);
+ const outs=state.expenses.filter(x=>x.paid!==false).reduce((s,x)=>s+Number(x.amount||0),0);
+ return {ins,outs,balance:ins-outs};
+}
+function setTab(tab){
  document.querySelectorAll(".bottom-nav button").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));
- const views={inicio:home,caixa:caixa,receitas:receitas,despesas:despesas,clientes:clientes,mais:mais};
- document.getElementById("view").innerHTML=views[tab]();
- bind();
+ if(tab==="inicio") home(); if(tab==="caixa") caixa(); if(tab==="despesas") despesas(); if(tab==="clientes") clientes(); if(tab==="relatorios") relatorios();
 }
-function header(title,sub=""){return `<h1>${title}</h1>${sub?`<div class="subtitle">${sub}</div>`:""}`}
+document.querySelectorAll(".bottom-nav button").forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
+
 function home(){
- const ent=sum(data.entries), out=sum(data.exits), recv=sum(data.receivables.filter(x=>x.status==="A receber")), pay=sum(data.expenses.filter(x=>x.status!=="Paga"));
- return header("Central Financeira","Hoje, ${new Date().toLocaleDateString("pt-BR")}")+
- `<div class="grid">
-  <div class="card"><div class="label">Entradas</div><div class="value green">${money(ent)}</div></div>
-  <div class="card"><div class="label">Saídas</div><div class="value red">${money(out)}</div></div>
-  <div class="card"><div class="label">A Receber</div><div class="value blue">${money(recv)}</div></div>
-  <div class="card"><div class="label">A Pagar</div><div class="value gold">${money(pay)}</div></div>
+ const t=totals(), cuts=state.entries.length, goal=Number(state.goal||0), pct=goal?Math.min(100,(t.ins/goal)*100):0;
+ $("#view").innerHTML=`
+ <section class="hero">
+  <div class="kicker">FATURAMENTO DE HOJE</div><div class="big">${money(t.ins)}</div>
+  <div class="hero-sub">${cuts} cortes registrados</div>
+  <div class="progress"><i style="width:${pct}%"></i></div>
+  <div class="goal"><span>${goal?"Meta diária "+money(goal):"Meta diária não definida"}</span><span>${Math.round(pct)}%</span></div>
+ </section>
+ <div class="grid">
+  <div class="card"><h3>ÚLTIMOS 7 DIAS</h3><div class="value">${money(t.ins)}</div><div class="small">${cuts} cortes</div></div>
+  <div class="card"><h3>MÊS ATUAL</h3><div class="value">${money(t.balance)}</div><div class="small">${cuts} cortes</div></div>
  </div>
- <div class="hero section"><div>Saldo Disponível</div><div class="big green">${money(ent-out)}</div><div class="subtitle">Entradas − saídas</div></div>
- <div class="section"><div class="section-head"><h2>Atalhos rápidos</h2></div>
- <div class="quick"><button class="btn primary" data-action="entry">＋ Entrada</button><button class="btn danger" data-action="exit">− Saída</button></div></div>
- <div class="section"><div class="section-head"><h2>Resumo do mês</h2><button class="btn small" data-tabto="relatorios">Detalhes</button></div>
- <div class="grid"><div class="card"><div class="label">Entradas</div><div class="value green">${money(ent)}</div></div><div class="card"><div class="label">Saídas</div><div class="value red">${money(out)}</div></div><div class="card"><div class="label">Lucro</div><div class="value blue">${money(ent-out)}</div></div><div class="card"><div class="label">Pendências</div><div class="value gold">${money(recv+pay)}</div></div></div></div>`;
-}
-function caixa(){
- const ent=sum(data.entries),out=sum(data.exits);
- return header("Caixa","Controle de entradas e saídas")+
- `<div class="quick"><button class="btn primary" data-action="entry">＋ Entrada rápida</button><button class="btn danger" data-action="exit">− Saída rápida</button></div>
- <div class="grid section"><div class="card"><div class="label">Total de entradas</div><div class="value green">${money(ent)}</div></div><div class="card"><div class="label">Total de saídas</div><div class="value red">${money(out)}</div></div></div>
- <div class="hero section"><div>Saldo do período</div><div class="big green">${money(ent-out)}</div></div>
- <div class="section"><div class="section-head"><h2>Movimentações recentes</h2></div><div class="list">${[...data.entries.map(x=>({...x,kind:"Entrada"})),...data.exits.map(x=>({...x,kind:"Saída"}))].sort((a,b)=>b.id-a.id).map(x=>`<div class="item"><div><div class="item-title">${x.desc}</div><div class="meta">${x.date} · ${x.type||"Outros"}</div></div><div class="item-right"><div class="amount ${x.kind==="Entrada"?"green":"red"}">${x.kind==="Entrada"?"+":"−"} ${money(x.amount)}</div><span class="pill ${x.kind==="Entrada"?"green":"red"}">${x.kind.toUpperCase()}</span></div></div>`).join("")||`<div class="empty">Nenhuma movimentação</div>`}</div></div>`;
-}
-function receitas(){
- const total=sum(data.receivables.filter(x=>x.status==="A receber"));
- return header("Receitas","Contas a receber")+
- `<div class="hero"><div>Total a receber</div><div class="big blue">${money(total)}</div></div>
- <div class="filters"><button class="btn sel">A receber</button><button class="btn">Recebidas</button><button class="btn">Todas</button></div>
- <div class="list">${data.receivables.map(x=>`<div class="item"><div><div class="item-title">${x.client}</div><div class="meta">Venc: ${brDate(x.due)} · ${x.desc}</div></div><div class="item-right"><div class="amount blue">${money(x.amount)}</div><span class="pill blue">${x.status}</span></div></div>`).join("")}</div>
- <div class="section"><button class="btn primary" data-action="receivable">＋ Nova receita</button></div>`;
-}
-function despesas(){
- const total=sum(data.expenses.filter(x=>x.status!=="Paga"));
- return header("Despesas","Vencimentos, parcelas e tipos de despesa")+
- `<div class="hero"><div>Total a pagar</div><div class="big red">${money(total)}</div></div>
- <div class="filters"><button class="btn sel">Todas</button><button class="btn">A vencer</button><button class="btn">Vencidas</button><button class="btn">Pagas</button></div>
- <input class="search" id="expenseSearch" placeholder="🔎 Buscar despesa...">
- <div class="list section">${data.expenses.map(x=>`<div class="item"><div><div class="item-title">${x.desc}</div><div class="meta">Venc: ${brDate(x.due)} · ${x.category}</div><div class="meta">${x.type} · Parcela ${x.current}/${x.installments}</div></div><div class="item-right"><div class="amount red">${money(x.amount)}</div><span class="pill ${x.status==="Paga"?"green":"red"}">${x.status}</span><div style="margin-top:7px"><button class="btn small" data-edit-expense="${x.id}">Editar</button></div></div></div>`).join("")}</div>
- <div class="section"><button class="btn danger" data-action="expense">＋ Nova despesa</button></div>`;
-}
-function clientes(){
- return header("Clientes","Clientes cadastrados e controle de fiado")+
- `<input class="search" id="clientSearch" placeholder="🔎 Buscar cliente...">
- <div class="list section">${data.clients.map(x=>`<div class="item"><div><div class="item-title">♙ ${x.name}</div><div class="meta">${x.phone||"Sem telefone"} · Total gasto ${money(x.total)}</div></div><div class="item-right"><div class="amount ${x.open?"red":"green"}">${x.open?money(x.open):"Sem pendências"}</div><span class="pill ${x.open?"red":"green"}">${x.open?"Em aberto":"Em dia"}</span></div></div>`).join("")}</div>
- <div class="section"><button class="btn blue" data-action="client">＋ Novo cliente</button></div>`;
-}
-function mais(){
- return header("Mais","Ferramentas da KINGS 9")+
- `<div class="list">
-  <button class="item" data-action="calendar"><div><div class="item-title">Calendário financeiro</div><div class="meta">Visualize entradas e saídas por dia</div></div><b>›</b></button>
-  <button class="item" data-action="reports"><div><div class="item-title">Relatórios</div><div class="meta">Resumo, lucro e gráficos</div></div><b>›</b></button>
-  <button class="item" data-action="categories"><div><div class="item-title">Categorias</div><div class="meta">Organize receitas e despesas</div></div><b>›</b></button>
-  <button class="item" data-action="fiado"><div><div class="item-title">Fiado</div><div class="meta">Controle de vendas em aberto</div></div><b>›</b></button>
-  <button class="item" data-action="backup"><div><div class="item-title">Backup dos dados</div><div class="meta">Exportar ou importar seus lançamentos</div></div><b>›</b></button>
+ <div class="section-title"><h2>Ações rápidas</h2></div>
+ <div class="actions">
+  <button class="action in" onclick="openEntry()"><strong>+ Entrada rápida</strong><small>Registrar recebimento</small></button>
+  <button class="action out" onclick="openExpense()"><strong>− Saída rápida</strong><small>Registrar despesa</small></button>
+ </div>
+ <div class="section-title"><h2>Resumo</h2></div>
+ <div class="list">
+  <div class="row"><div>Total de entradas</div><div class="money in">${money(t.ins)}</div></div>
+  <div class="row"><div>Total de saídas</div><div class="money out">${money(t.outs)}</div></div>
+  <div class="row"><div>Saldo do período</div><div class="money">${money(t.balance)}</div></div>
  </div>`;
 }
-function calendar(){
- let d=new Date(), y=d.getFullYear(),m=d.getMonth(), first=new Date(y,m,1).getDay(),days=new Date(y,m+1,0).getDate(),cells="";
- ["DOM","SEG","TER","QUA","QUI","SEX","SÁB"].forEach(x=>cells+=`<div class="day" style="min-height:32px;background:#1d1e20;font-weight:800">${x}</div>`);
- for(let i=0;i<first;i++)cells+=`<div class="day"></div>`;
- for(let n=1;n<=days;n++){let ds=`${y}-${String(m+1).padStart(2,"0")}-${String(n).padStart(2,"0")}`, es=data.entries.filter(x=>x.date===ds),xs=data.exits.filter(x=>x.date===ds), ex=data.expenses.filter(x=>x.due===ds); cells+=`<div class="day"><b>${n}</b>${es.length?`<span class="dot in">+${money(sum(es))}</span>`:""}${xs.length?`<span class="dot out">−${money(sum(xs))}</span>`:""}${ex.length?`<span class="dot out">Venc ${money(sum(ex))}</span>`:""}</div>`}
- return header("Calendário","Visualize vencimentos e movimentações")+
- `<div class="card"><div class="section-head"><button class="btn small">‹</button><h2>${d.toLocaleDateString("pt-BR",{month:"long",year:"numeric"})}</h2><button class="btn small">›</button></div><div class="calendar">${cells}</div></div>`;
+function caixa(){
+ const t=totals();
+ $("#view").innerHTML=`<div class="page-title">Caixa</div>
+ <div class="grid">
+  <div class="card"><h3>ENTRADAS</h3><div class="value" style="color:var(--blue)">${money(t.ins)}</div></div>
+  <div class="card"><h3>SAÍDAS</h3><div class="value" style="color:var(--red)">${money(t.outs)}</div></div>
+ </div>
+ <div class="card" style="margin-top:18px"><h3>SALDO DO PERÍODO</h3><div class="value" style="color:var(--green)">${money(t.balance)}</div></div>
+ <div class="section-title"><h2>Movimentações</h2><button onclick="openEntry()">+ Entrada</button></div>
+ <div class="list">${[
+ ...state.entries.map(x=>({type:"in",title:x.description||"Entrada",amount:x.amount,date:x.date})),
+ ...state.expenses.filter(x=>x.paid!==false).map(x=>({type:"out",title:x.description||"Despesa",amount:x.amount,date:x.due}))
+ ].sort((a,b)=>(b.date||"").localeCompare(a.date||"")).map(x=>`<div class="row"><div><b>${x.title}</b><div class="meta">${x.date||""}</div></div><div class="money ${x.type}">${x.type==="out"?"− ":"+"}${money(x.amount)}</div></div>`).join("")||'<div class="empty">Nenhuma movimentação registrada.</div>'}</div>`;
 }
-function reports(){
- const e=sum(data.entries),x=sum(data.exits),lucro=e-x;
- return header("Relatórios","Análises e gráficos")+
- `<div class="grid"><div class="card"><div class="label">Entradas</div><div class="value green">${money(e)}</div></div><div class="card"><div class="label">Saídas</div><div class="value red">${money(x)}</div></div><div class="card"><div class="label">Lucro</div><div class="value blue">${money(lucro)}</div></div><div class="card"><div class="label">Margem</div><div class="value gold">${e?((lucro/e)*100).toFixed(1):0}%</div></div></div>
- <div class="card section"><div class="section-head"><h2>Entradas × Saídas</h2><span class="meta">Últimos lançamentos</span></div><div class="chart">${[35,48,42,68,55,76,62,82,70,88].map(h=>`<div class="bar" style="height:${h}%"></div>`).join("")}</div><div class="legend"><span class="green">● Entradas</span><span class="red">● Saídas</span></div></div>`;
+function despesas(){
+ $("#view").innerHTML=`<div class="page-title">Despesas</div>
+ <div class="toolbar"><input id="expenseSearch" placeholder="Buscar despesa..." oninput="renderExpenseList()"></div>
+ <div class="list" id="expenseList"></div><button class="fab" onclick="openExpense()">+</button>`;
+ renderExpenseList();
 }
-function categories(){let cats={};data.expenses.forEach(x=>cats[x.category]=(cats[x.category]||0)+Number(x.amount));return header("Despesas por categoria","Agosto 2026")+`<div class="list">${Object.entries(cats).map(([k,v])=>`<div class="item"><div class="item-title">${k}</div><div class="amount red">${money(v)}</div></div>`).join("")||`<div class="empty">Cadastre despesas para ver categorias.</div>`}</div>`}
-function fiado(){let total=sum(data.clients.map(x=>x.open));return header("Fiado","Controle de vendas em aberto")+`<div class="hero"><div>Total em aberto</div><div class="big red">${money(total)}</div></div><div class="list section">${data.clients.filter(x=>x.open>0).map(x=>`<div class="item"><div><div class="item-title">${x.name}</div><div class="meta">Em aberto · ${money(x.open)}</div></div><button class="btn primary">Receber</button></div>`).join("")||`<div class="empty">Nenhum fiado em aberto.</div>`}</div>`}
+function renderExpenseList(){
+ const q=($("#expenseSearch")?.value||"").toLowerCase();
+ const arr=state.expenses.filter(x=>(x.description||"").toLowerCase().includes(q)||(x.category||"").toLowerCase().includes(q));
+ $("#expenseList").innerHTML=arr.map((x,i)=>`<div class="row"><div><b>${x.description||"Despesa"}</b><div class="meta">Vencimento: ${x.due||"—"} · ${x.category||"Outros"} · ${x.type||"Variável"}</div><div class="tag">${x.installment||"À vista"}</div></div><div style="text-align:right"><div class="money out">${money(x.amount)}</div><button class="danger" onclick="removeExpense(${i})">Excluir</button></div></div>`).join("")||'<div class="empty">Nenhuma despesa cadastrada.</div>';
+}
+function clientes(){
+ $("#view").innerHTML=`<div class="page-title">Clientes</div><div class="toolbar"><input id="clientSearch" placeholder="Buscar cliente..." oninput="renderClients()"></div><div class="list" id="clientList"></div><button class="fab" onclick="openClient()">+</button>`;
+ renderClients();
+}
+function renderClients(){
+ const q=($("#clientSearch")?.value||"").toLowerCase();
+ $("#clientList").innerHTML=state.clients.filter(x=>x.name.toLowerCase().includes(q)).map((x,i)=>`<div class="row"><div><b>${x.name}</b><div class="meta">${x.phone||"Sem telefone"} · ${x.note||"Cliente cadastrado"}</div></div><button class="danger" onclick="removeClient(${i})">Excluir</button></div>`).join("")||'<div class="empty">Cadastre seus clientes para deixar a lista pronta.</div>';
+}
+function relatorios(){
+ const t=totals();
+ $("#view").innerHTML=`<div class="page-title">Relatórios</div><div class="grid">
+ <div class="card"><h3>ENTRADAS</h3><div class="value">${money(t.ins)}</div></div>
+ <div class="card"><h3>SAÍDAS</h3><div class="value">${money(t.outs)}</div></div></div>
+ <div class="section-title"><h2>Despesas por tipo</h2></div><div class="list">
+ ${Object.entries(state.expenses.reduce((a,x)=>(a[x.type||"Variável"]=(a[x.type||"Variável"]||0)+Number(x.amount||0),a),{})).map(([k,v])=>`<div class="row"><div>${k}</div><div class="money out">${money(v)}</div></div>`).join("")||'<div class="empty">Sem despesas.</div>'}</div>`;
+}
+function openSheet(html){$("#sheetCard").innerHTML=html;$("#sheet").classList.remove("hidden")}
+function closeSheet(){$("#sheet").classList.add("hidden")}
+$("#sheet").onclick=e=>{if(e.target.id==="sheet")closeSheet()};
 
-function modal(title,body,actions=""){document.getElementById("modal").innerHTML=`<h2>${title}</h2>${body}<div class="modal-actions">${actions||`<button class="btn" data-close>Cancelar</button>`}</div>`;document.getElementById("modalBackdrop").classList.add("open");}
-function closeModal(){document.getElementById("modalBackdrop").classList.remove("open")}
-function expenseForm(x={}){
- modal(x.id?"Editar despesa":"Nova despesa",`<div class="form">
- <label>Descrição<input id="fdesc" value="${x.desc||""}" placeholder="Ex.: Aluguel da loja"></label>
- <div class="form-row"><label>Valor<input id="famount" type="number" step="0.01" value="${x.amount||""}"></label><label>Tipo de despesa<select id="ftype"><option ${x.type==="Fixa"?"selected":""}>Fixa</option><option ${x.type==="Variável"?"selected":""}>Variável</option><option ${x.type==="Cartão"?"selected":""}>Cartão</option><option ${x.type==="Mercadoria"?"selected":""}>Mercadoria</option><option ${x.type==="Outros"?"selected":""}>Outros</option></select></label></div>
- <div class="form-row"><label>Data de vencimento<input id="fdue" type="date" value="${x.due||today}"></label><label>Categoria<input id="fcat" value="${x.category||""}" placeholder="Ex.: Contas Fixas"></label></div>
- <div class="form-row"><label>Nº de parcelas<input id="finst" type="number" min="1" value="${x.installments||1}"></label><label>Parcela atual<input id="fcur" type="number" min="1" value="${x.current||1}"></label></div>
- <label>Status<select id="fstatus"><option>A vencer</option><option>Vencida</option><option>Paga</option></select></label>
- </div>`, `<button class="btn" data-close>Cancelar</button><button class="btn danger" data-save-expense="${x.id||""}">Salvar</button>`);
-}
-function entryForm(kind){
- modal(kind==="entry"?"Nova entrada":"Nova saída",`<div class="form">
- <label>Descrição<input id="edesc" placeholder="${kind==="entry"?"Ex.: Pagamento - João":"Ex.: Aluguel"}"></label>
- <div class="form-row"><label>Valor<input id="eamount" type="number" step="0.01"></label><label>Data<input id="edate" type="date" value="${today}"></label></div>
- <label>Tipo<select id="etype"><option>Pix</option><option>Dinheiro</option><option>Cartão</option><option>Serviço</option><option>Outros</option></select></label>
- </div>`, `<button class="btn" data-close>Cancelar</button><button class="btn ${kind==="entry"?"primary":"danger"}" data-save-entry="${kind}">Salvar</button>`);
-}
-function clientForm(){modal("Novo cliente",`<div class="form"><label>Nome<input id="cname" placeholder="Nome do cliente"></label><label>Telefone<input id="cphone" placeholder="(00) 00000-0000"></label><label>Limite de fiado<input id="climit" type="number" step="0.01" value="0"></label></div>`,`<button class="btn" data-close>Cancelar</button><button class="btn blue" data-save-client>Salvar</button>`)}
-function receivableForm(){modal("Nova receita",`<div class="form"><label>Cliente<input id="rclient" placeholder="Nome do cliente"></label><div class="form-row"><label>Valor<input id="ramount" type="number" step="0.01"></label><label>Vencimento<input id="rdue" type="date" value="${today}"></label></div><label>Descrição<input id="rdesc" placeholder="Ex.: Serviço"></label></div>`,`<button class="btn" data-close>Cancelar</button><button class="btn primary" data-save-receivable>Salvar</button>`)}
-function brDate(s){return new Date(s+"T12:00:00").toLocaleDateString("pt-BR")}
-function bind(){
- document.querySelectorAll("[data-tabto]").forEach(b=>b.onclick=()=>{tab="mais";render()});
- document.querySelectorAll("[data-action]").forEach(b=>b.onclick=()=>{let a=b.dataset.action;if(a==="entry"||a==="exit")entryForm(a);else if(a==="expense")expenseForm();else if(a==="client")clientForm();else if(a==="receivable")receivableForm();else if(a==="calendar"){document.getElementById("view").innerHTML=calendar();bind()}else if(a==="reports"){document.getElementById("view").innerHTML=reports();bind()}else if(a==="categories"){document.getElementById("view").innerHTML=categories();bind()}else if(a==="fiado"){document.getElementById("view").innerHTML=fiado();bind()}else if(a==="backup")backup()});
- document.querySelectorAll("[data-close]").forEach(b=>b.onclick=closeModal);
- document.querySelectorAll("[data-edit-expense]").forEach(b=>b.onclick=()=>expenseForm(data.expenses.find(x=>x.id==b.dataset.editExpense)));
- document.querySelectorAll("[data-save-expense]").forEach(b=>b.onclick=()=>{let old=data.expenses.find(x=>x.id==b.dataset.saveExpense);let obj={id:old?.id||Date.now(),desc:document.getElementById("fdesc").value,amount:+document.getElementById("famount").value,due:document.getElementById("fdue").value,category:document.getElementById("fcat").value||"Outros",type:document.getElementById("ftype").value,installments:+document.getElementById("finst").value,current:+document.getElementById("fcur").value,status:document.getElementById("fstatus").value};if(old)Object.assign(old,obj);else data.expenses.push(obj);save();closeModal();render()});
- document.querySelectorAll("[data-save-entry]").forEach(b=>b.onclick=()=>{let obj={id:Date.now(),desc:document.getElementById("edesc").value||"Movimentação",amount:+document.getElementById("eamount").value,date:document.getElementById("edate").value,type:document.getElementById("etype").value};if(!obj.amount)return alert("Informe o valor.");(b.dataset.saveEntry==="entry"?data.entries:data.exits).push(obj);save();closeModal();render()});
- document.querySelectorAll("[data-save-client]").forEach(b=>b.onclick=()=>{let name=document.getElementById("cname").value.trim();if(!name)return alert("Informe o nome.");data.clients.push({id:Date.now(),name,phone:document.getElementById("cphone").value,open:0,total:0});save();closeModal();render()});
- document.querySelectorAll("[data-save-receivable]").forEach(b=>b.onclick=()=>{let client=document.getElementById("rclient").value.trim();let amount=+document.getElementById("ramount").value;if(!client||!amount)return alert("Informe cliente e valor.");data.receivables.push({id:Date.now(),client,amount,due:document.getElementById("rdue").value,desc:document.getElementById("rdesc").value||"Receita",status:"A receber"});save();closeModal();render()});
- const es=document.getElementById("expenseSearch");if(es)es.oninput=()=>{document.querySelectorAll(".item").forEach(i=>i.style.display=i.innerText.toLowerCase().includes(es.value.toLowerCase())?"flex":"none")};
- const cs=document.getElementById("clientSearch");if(cs)cs.oninput=()=>{document.querySelectorAll(".item").forEach(i=>i.style.display=i.innerText.toLowerCase().includes(cs.value.toLowerCase())?"flex":"none")};
-}
-function backup(){
- const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="kings9-backup.json";a.click();URL.revokeObjectURL(a.href);
-}
-document.querySelectorAll(".bottom-nav button").forEach(b=>b.onclick=()=>{tab=b.dataset.tab;render()});
-document.getElementById("modalBackdrop").onclick=e=>{if(e.target.id==="modalBackdrop")closeModal()};
-document.getElementById("menuBtn").onclick=()=>{tab="mais";render()};
-render();
-
-if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(()=>{});}
+function openEntry(){openSheet(`<h2>Nova entrada</h2><form class="form" onsubmit="addEntry(event)">
+<label>Descrição<input id="edesc" required placeholder="Ex.: Corte, Pix, pagamento"></label>
+<div class="tw"><label>Valor<input id="eamount" required type="number" step="0.01" min="0" placeholder="0,00"></label><label>Data<input id="edate" type="date" value="${new Date().toISOString().slice(0,10)}"></label></div>
+<button class="primary">Salvar entrada</button></form>`)}
+function addEntry(e){e.preventDefault();state.entries.push({description:$("#edesc").value,amount:Number($("#eamount").value),date:$("#edate").value});save();closeSheet();setTab("caixa")}
+function openExpense(){openSheet(`<h2>Nova despesa</h2><form class="form" onsubmit="addExpense(event)">
+<label>Descrição<input id="xdesc" required placeholder="Ex.: Aluguel, cartão, fornecedor"></label>
+<div class="tw"><label>Valor total<input id="xamount" required type="number" step="0.01" min="0"></label><label>Vencimento<input id="xdue" type="date" value="${new Date().toISOString().slice(0,10)}"></label></div>
+<div class="tw"><label>Tipo<select id="xtype"><option>Fixa</option><option>Variável</option><option>Cartão</option><option>Fornecedor</option><option>Empréstimo</option><option>Outros</option></select></label><label>Parcela<input id="xinst" placeholder="Ex.: 3/12 ou À vista"></label></div>
+<label>Categoria<input id="xcat" placeholder="Ex.: Casa, Negócio, Cartão"></label>
+<button class="primary">Salvar despesa</button></form>`)}
+function addExpense(e){e.preventDefault();state.expenses.push({description:$("#xdesc").value,amount:Number($("#xamount").value),due:$("#xdue").value,type:$("#xtype").value,installment:$("#xinst").value||"À vista",category:$("#xcat").value||"Outros",paid:true});save();closeSheet();setTab("despesas")}
+function removeExpense(i){if(confirm("Excluir esta despesa?")){state.expenses.splice(i,1);save();renderExpenseList()}}
+function openClient(){openSheet(`<h2>Novo cliente</h2><form class="form" onsubmit="addClient(event)">
+<label>Nome<input id="cname" required></label><label>Telefone<input id="cphone"></label><label>Observação<input id="cnote"></label>
+<button class="primary">Salvar cliente</button></form>`)}
+function addClient(e){e.preventDefault();state.clients.push({name:$("#cname").value,phone:$("#cphone").value,note:$("#cnote").value});save();closeSheet();setTab("clientes")}
+function removeClient(i){if(confirm("Excluir este cliente?")){state.clients.splice(i,1);save();renderClients()}}
+$("#settingsBtn").onclick=()=>openSheet(`<h2>Configurações KINGS 9</h2><form class="form" onsubmit="setGoal(event)"><label>Meta diária<input id="goal" type="number" step="0.01" value="${state.goal||0}"></label><button class="primary">Salvar meta</button></form><p class="small">Os dados ficam salvos neste aparelho/navegador.</p>`);
+function setGoal(e){e.preventDefault();state.goal=Number($("#goal").value||0);save();closeSheet();home()}
+home();

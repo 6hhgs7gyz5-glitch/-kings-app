@@ -1,27 +1,37 @@
-# KINGS 9 — versão web
+KINGS 9 — PACOTE DE ATUALIZAÇÃO WEB
+=====================================
 
-## Como atualizar seu site
-1. Descompacte o ZIP.
-2. Envie **todos os arquivos e pastas** para a pasta pública do seu site (por exemplo, `public_html`).
-3. Substitua a versão antiga quando o servidor pedir confirmação.
-4. Abra o endereço do site no iPhone e atualize a página.
+IMPORTANTE:
+Este pacote foi montado para SUBSTITUIR a versão antiga do site.
 
-Esta versão é uma aplicação web estática: não exige Node.js nem banco de dados para funcionar.
-Os lançamentos desta versão ficam salvos no armazenamento local do navegador (localStorage). Use "Mais > Backup dos dados" para exportar os dados.
+Arquivos:
+- index.html
+- style.css
+- app.js
+- manifest.webmanifest
+- sw.js
+- assets/logo.png
 
-## Funcionalidades incluídas
-- Central financeira
-- Caixa com Entrada rápida, Saída rápida, total de entradas, total de saídas e saldo do período
-- Receitas / contas a receber
+COMO ATUALIZAR NO GITHUB PAGES:
+1. Descompacte este ZIP.
+2. Entre no repositório do seu site.
+3. Substitua os arquivos antigos pelos arquivos deste pacote.
+4. Confirme o commit.
+5. Aguarde o GitHub Pages publicar.
+6. No iPhone, feche a aba do site completamente e abra novamente.
+7. Se continuar aparecendo a versão antiga, abra em uma aba privada para testar.
+
+A versão inclui:
+- Dashboard KINGS
+- Entrada rápida
+- Saída rápida
+- Total de entradas
+- Total de saídas
+- Saldo do período
+- Caixa
+- Despesas com vencimento, tipo, categoria e parcela
 - Clientes cadastrados
-- Fiado
-- Despesas com vencimento, categoria, tipo e parcelamento
-- Calendário financeiro
 - Relatórios
-- Categorias
-- Backup local
-- Layout responsivo para iPhone
-- Manifesto PWA
-
-## Importante
-Este ZIP é uma **versão web pronta para publicação em hospedagem**. Ele não é um arquivo IPA da App Store.
+- Meta diária
+- Persistência local dos dados
+- PWA e limpeza automática de cache
