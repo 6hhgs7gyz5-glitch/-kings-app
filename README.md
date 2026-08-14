@@ -1,24 +1,16 @@
-# KINGS — versão 8 — Caixa e despesas organizadas
+# KINGS v9 — Gestão Financeira Completa
 
-Atualização do app web/PWA com foco no Caixa e nas despesas.
+Versão web/PWA do KINGS com Caixa, receitas, despesas organizadas, clientes, fiado, calendário e relatórios.
 
-## O que foi incluído
-- Caixa com Entrada rápida e Saída rápida.
-- Saldo do período, total de entradas e total de saídas.
-- Despesas com tipo (Fixa, Variável, Parcelada, Imposto, Pessoal ou Outros).
-- Categoria da despesa.
-- Data de vencimento.
-- Data de pagamento/registro.
-- Controle de parcela atual e total de parcelas.
-- Situação Pago ou Pendente.
-- Despesas pendentes não reduzem o saldo do Caixa até serem marcadas como pagas.
-- Botão para marcar uma despesa pendente como paga.
-- Destaque para despesas vencidas.
-- Clientes cadastrados permanecem salvos no aplicativo.
-- Dados continuam sendo armazenados localmente no navegador.
-- Service Worker atualizado para evitar cache da versão anterior.
+## Novidades
+- Central Financeira na tela inicial
+- Caixa com entradas, saídas, saldo e recebimentos
+- Receitas gerais
+- Despesas com tipo, categoria, vencimento, parcelas, recorrência e status paga/pendente
+- Calendário financeiro
+- Fiado e clientes
+- Relatórios
+- Mantida a identidade visual escura e a logo do KINGS
 
 ## Publicação
-Envie o conteúdo desta pasta para o mesmo local onde o site/PWA atual está hospedado. O arquivo `index.html` é a entrada principal.
-
-Se estiver usando GitHub Pages, substitua os arquivos da publicação pela versão desta pasta e aguarde a atualização do Pages.
+Envie o conteúdo desta pasta para o mesmo local do site que já hospeda o KINGS.
