@@ -1,19 +1,19 @@
-KINGS 9 v9.1 — pacote definitivo
+KINGS 9.2.1
+=========
+Versão responsiva inspirada no layout enviado: Início, Caixa, Despesas, Clientes, Receitas, Calendário, Relatórios e Configurações.
 
-Compatível com a estrutura atual do repositório:
-index.html, app.js, estilo.css, logo.png, manifest.json, manifest.webmanifest, sw.js, service-worker.js e ícones.
+Destaques:
+- Layout mobile-first com navegação inferior.
+- Cadastro de cortes, receitas, despesas e clientes.
+- Controle de fiado, contas pendentes e despesas pagas.
+- Calendário financeiro.
+- Relatórios de entradas x saídas.
+- Persistência em localStorage.
+- Rotina automática de deduplicação de cortes, clientes, receitas e despesas ao abrir e após novos cadastros.
 
-Atualização de cache:
-- versão de build renovada;
-- service worker antigo é desregistrado na primeira abertura após a atualização;
-- caches antigos com prefixo kings- são removidos;
-- novo SW usa updateViaCache=none e navegação sem cache;
-- ambos sw.js e service-worker.js são atualizados para evitar conflito com versões anteriores.
-
-Publicação:
-1. Substitua os arquivos da raiz do GitHub pelos arquivos deste pacote.
-2. Faça commit.
-3. Aguarde o GitHub Pages publicar.
-4. Abra o site uma vez; ele fará a limpeza de cache e recarregará a KINGS 9.
-
-Não renomeie os arquivos da raiz.
+Substituição:
+1. Extraia o ZIP.
+2. Substitua os arquivos do site pelos arquivos desta pasta.
+3. Mantenha o manifest.json e sw.js na raiz.
+4. O service worker foi atualizado para 9.2.1, usa cache versionado, limpa caches antigos, assume o controle imediatamente e força a atualização do index.
+5. Se o iPhone ainda mostrar a versão anterior, abra o site uma vez, feche a aba e abra novamente. Em último caso, remova os dados do site em Ajustes > Safari > Avançado > Dados dos Sites e abra o site de novo.
