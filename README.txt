@@ -1,35 +1,18 @@
-KINGS 9.2.1
-============
+KINGS 9.2.1 — versão funcional
 
-Esta pasta é uma PWA substituta da versão anterior, com visual inspirado diretamente na imagem de referência enviada.
+Esta versão mantém o visual KINGS 9.2.1 e corrige o fluxo de dados:
+- Entrada e saída rápidas salvam no localStorage.
+- Receitas e despesas podem ser criadas, recebidas/pagas e excluídas.
+- Clientes podem ser cadastrados e usados para registrar cortes.
+- Cortes podem ser registrados como recebidos ou a receber.
+- Valores do painel, caixa, relatórios e calendário são recalculados automaticamente.
+- Deduplicação automática antes de salvar.
+- Backup JSON para exportação e restauração.
+- Migração automática do armazenamento kings92_data_v1 para kings92_data_v2.
+- Service worker com cache versionado para evitar carregar a versão antiga.
 
-Arquivos principais:
-- index.html
-- styles.css
-- app.js
-- manifest.webmanifest
-- sw.js
-
-Recursos:
-- Dashboard, Caixa, Receitas, Despesas, Clientes, Calendário, Relatórios, Categorias e Mais.
-- Cadastro de entradas, saídas, receitas, despesas e clientes.
-- Dados persistidos no localStorage.
-- Deduplicação automática para cortes, clientes, receitas, despesas e movimentações.
-- Botão para executar a limpeza de duplicados manualmente.
-- Backup JSON.
-- Service worker com cache versionado para reduzir o problema de carregar a versão antiga.
-
-PUBLICAÇÃO:
-1. Extraia todos os arquivos para a mesma pasta do site.
-2. Substitua os arquivos antigos.
-3. Publique o conteúdo.
-4. Abra o site no iPhone e recarregue.
-5. Se uma instalação PWA antiga continuar aparecendo, remova a instalação antiga da Tela de Início e abra o endereço novamente no Safari para instalar a nova versão.
-
-IMPORTANTE:
-A deduplicação considera:
-- Clientes: nome + telefone
-- Receitas: cliente + descrição + valor + data
-- Despesas: descrição + valor + categoria + data
-- Movimentações: tipo + descrição + valor + data
-- Cortes: cliente + valor + data + serviço
+SUBSTITUIÇÃO NO SITE
+1. Extraia o ZIP.
+2. Substitua os arquivos do site pelos arquivos deste pacote.
+3. Mantenha index.html na raiz.
+4. No iPhone, recarregue o site após a publicação. Se a versão antiga persistir, feche a aba e abra novamente; o service worker desta versão remove caches antigos na ativação.
