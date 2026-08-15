@@ -1,7 +1,8 @@
 const KEY = 'kings92_data_v2';
-const OLD_KEYS = ['kings92_data_v1'];
+const OLD_KEYS = ['kings92_data_v1','kings92_data','kings_data_v2','kings_data'];
+const LEGACY_CUTS='kings_cuts_v3', LEGACY_EXPENSES='kings_expenses_v3', LEGACY_CFG='kings_cfg_v3';
 
-const today = () => new Date().toISOString().slice(0,10);
+const today = () => { const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
 const monthKey = d => String(d || '').slice(0,7);
 const clone = x => JSON.parse(JSON.stringify(x));
 const norm = v => String(v ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();
@@ -91,13 +92,40 @@ function dedupeAll(d){
   return d;
 }
 function persist(){ data=ensureShape(dedupeAll(data)); localStorage.setItem(KEY,JSON.stringify(data)); }
+function migrateLegacy(){
+  let d=clone(seed);
+  try{
+    const legacyCuts=JSON.parse(localStorage.getItem(LEGACY_CUTS)||'[]');
+    const legacyExpenses=JSON.parse(localStorage.getItem(LEGACY_EXPENSES)||'[]');
+    const legacyCfg=JSON.parse(localStorage.getItem(LEGACY_CFG)||'{}');
+    if(Array.isArray(legacyCuts) && legacyCuts.length){
+      d.cuts=legacyCuts.map(x=>({id:x.id||uid('cut'),client:x.client||x.cliente||'',service:x.service||x.servico||'Corte',value:num(x.value??x.valor),date:String(x.date||x.data||today()).slice(0,10),payment:x.payment||x.pagamento||'Recebido'}));
+      d.movements=d.cuts.filter(x=>x.payment==='Recebido').map(x=>({id:uid('m'),type:'in',desc:`${x.service} - ${x.client||'Cliente'}`,value:x.value,date:x.date,sourceId:x.id}));
+      const names=d.cuts.map(x=>norm(x.client)).filter(Boolean);
+      d.clients=d.clients.filter(c=>names.includes(norm(c.name)));
+      for(const x of d.cuts){ if(x.client && !d.clients.some(c=>norm(c.name)===norm(x.client))) d.clients.push({id:uid('c'),name:x.client,phone:''}); }
+      for(const x of d.cuts.filter(x=>x.payment!=='Recebido')) d.revenues.push({id:uid('r'),client:x.client,desc:x.service,value:x.value,date:x.date,status:'A receber',sourceId:x.id});
+    }
+    if(Array.isArray(legacyExpenses) && legacyExpenses.length){
+      d.expenses=legacyExpenses.map(x=>({id:x.id||uid('e'),desc:x.desc||x.description||x.descricao||'Despesa',value:num(x.value??x.valor),category:x.category||x.categoria||'Outros',date:String(x.date||x.data||today()).slice(0,10),status:x.status||'A vencer'}));
+      d.movements.push(...d.expenses.filter(x=>x.status==='Pago').map(x=>({id:uid('m'),type:'out',desc:x.desc,value:x.value,date:x.date,sourceId:x.id})));
+    }
+    if(legacyCfg && typeof legacyCfg==='object'){
+      if(num(legacyCfg.metaDia)) d.goal=num(legacyCfg.metaDia);
+      if(Array.isArray(legacyCfg.barbers)) d.barbers=legacyCfg.barbers;
+    }
+  }catch(e){}
+  return ensureShape(dedupeAll(d));
+}
 function load(){
   try{
     let raw=localStorage.getItem(KEY);
     if(!raw){ for(const k of OLD_KEYS){ raw=localStorage.getItem(k); if(raw) break; } }
-    if(raw){ const d=ensureShape(JSON.parse(raw)); localStorage.setItem(KEY,JSON.stringify(dedupeAll(d))); return dedupeAll(d); }
-  }catch(e){}
-  const d=clone(seed); localStorage.setItem(KEY,JSON.stringify(d)); return d;
+    if(raw){ const d=ensureShape(JSON.parse(raw)); const clean=dedupeAll(d); localStorage.setItem(KEY,JSON.stringify(clean)); return clean; }
+    const migrated=migrateLegacy();
+    localStorage.setItem(KEY,JSON.stringify(migrated));
+    return migrated;
+  }catch(e){ const d=clone(seed); localStorage.setItem(KEY,JSON.stringify(d)); return d; }
 }
 
 function totals(){
@@ -126,18 +154,40 @@ function render(){
   bindActions();
 }
 function header(title,sub=''){return `<div class="page-head"><h1 class="page-title">${esc(title)}</h1><div class="page-sub">${esc(sub)}</div></div>`;}
+function monthTotals(){
+  const mk=monthKey(today());
+  const rows=data.movements.filter(x=>monthKey(x.date)===mk);
+  const incoming=rows.filter(x=>x.type==='in').reduce((a,x)=>a+num(x.value),0);
+  const outgoing=rows.filter(x=>x.type==='out').reduce((a,x)=>a+num(x.value),0);
+  return {incoming,outgoing,profit:incoming-outgoing};
+}
 function pageHome(){
-  const t=totals(), goal=num(data.goal), pct=goal?Math.min(100,todayRevenue()/goal*100):0;
-  return `<div class="page">${header('Central Financeira',`Hoje, ${brDate(today())}`)}
-    <section class="hero"><div class="hero-kicker">FATURAMENTO DE HOJE</div><h1>${money(todayRevenue())}</h1><div class="accent">${todayCuts()} cortes registrados</div><div class="progress"><i style="width:${pct}%"></i></div><div class="progress-row"><span>${goal?`Meta diária ${money(goal)}`:'Meta diária não definida'}</span><span>${Math.round(pct)}%</span></div></section>
-    <div class="grid2"><div class="card"><div class="label">ÚLTIMOS 7 DIAS</div><div class="big">${money(weekRevenue())}</div><small>${weekCuts()} cortes</small></div><div class="card"><div class="label">MÊS ATUAL</div><div class="big">${money(monthRevenue())}</div><small>${monthCuts()} cortes</small></div></div>
-    <section class="fin-card"><div class="fin-head"><div><div class="page-sub">VISÃO FINANCEIRA</div><h2>Central Financeira</h2></div><button data-nav="cash">Ver caixa →</button></div>
-    <div class="fin-grid"><div class="stat"><small>Entradas</small><b class="green">${money(t.incoming)}</b></div><div class="stat"><small>Saídas</small><b class="red">${money(t.outgoing)}</b></div><div class="stat"><small>A Receber</small><b class="blue">${money(t.receivable)}</b></div><div class="stat"><small>A Pagar</small><b class="gold">${money(t.payable)}</b></div></div>
-    <div class="quick-grid"><button class="quick greenbtn" data-action="quickIn"><span class="qi">＋</span>Entrada</button><button class="quick redbtn" data-action="quickOut"><span class="qi">−</span>Saída</button><button class="quick bluebtn" data-action="addClient"><span class="qi">♙</span>Cliente</button></div></section>
-    <div class="section-title">Movimentações recentes</div>${movementRows(data.movements.slice().reverse().slice(0,8))}
+  const t=totals(), mt=monthTotals(), goal=num(data.goal), pct=goal?Math.min(100,todayRevenue()/goal*100):0;
+  return `<div class="page home-page">
+    <div class="home-heading"><div><h1>Central Financeira</h1><div>Hoje, ${brDate(today())} · <button class="calendar-link" data-nav="calendar">Ver calendário</button></div></div></div>
+    <div class="home-metrics">
+      <div class="home-metric in"><span>Entradas</span><b>${money(t.incoming)}</b></div>
+      <div class="home-metric out"><span>Saídas</span><b>${money(t.outgoing)}</b></div>
+      <div class="home-metric recv"><span>A Receber</span><b>${money(t.receivable)}</b></div>
+      <div class="home-metric pay"><span>A Pagar</span><b>${money(t.payable)}</b></div>
+    </div>
+    <section class="home-balance"><div class="balance-label">Saldo Disponível</div><div class="balance-value ${t.balance>=0?'green':'red'}">${money(t.balance)}</div><div class="balance-line"></div><div class="profit-label">Lucro do Mês</div><div class="profit-row"><b class="green">${money(mt.profit)}</b><button data-nav="reports">↗</button></div></section>
+    <div class="home-quick-title">Atalhos Rápidos</div>
+    <div class="home-quick">
+      <button class="home-q in" data-action="quickIn"><span>＋</span>Entrada</button>
+      <button class="home-q out" data-action="quickOut"><span>−</span>Saída</button>
+      <button class="home-q client" data-action="addClient"><span>♙</span>Cliente</button>
+    </div>
+    <div class="home-summary-title"><span>Resumo do Mês</span><button data-nav="reports">Detalhes</button></div>
+    <div class="home-summary">
+      <div><span>Entradas</span><b class="green">${money(mt.incoming)}</b></div>
+      <div><span>Saídas</span><b class="red">${money(mt.outgoing)}</b></div>
+      <div><span>Lucro</span><b class="green">${money(mt.profit)}</b></div>
+    </div>
+    <div class="section-title home-recent-title">Movimentações recentes</div>${movementRows(data.movements.slice().reverse().slice(0,8))}
   </div>`;
 }
-function movementRows(arr){return arr.map(x=>`<div class="row"><div class="row-icon ${x.type==='in'?'green':'red'}">${x.type==='in'?'↑':'↓'}</div><div class="row-main"><b>${esc(x.desc)}</b><small>${brDate(x.date)}</small></div><div class="row-price ${x.type==='in'?'green':'red'}">${money(x.value)}</div><button class="mini danger-mini" data-action="deleteMovement" data-id="${x.id}">×</button></div>`).join('')||`<div class="empty"><strong>Nenhuma movimentação</strong><br>Registre uma entrada ou saída.</div>`;}
+function movementRows(arr){return arr.map(x=>`<div class="row"><div class="row-icon ${x.type==='in'?'green':'red'}">${x.type==='in'?'↑':'↓'}</div><div class="row-main"><b>${esc(x.sourceId?.startsWith('cut_')?'Corte':x.desc)}</b><small>${brDate(x.date)}${x.sourceId?.startsWith('cut_')?' · Corte registrado':''}</small></div><div class="row-price ${x.type==='in'?'green':'red'}">${money(x.value)}</div><button class="mini danger-mini" data-action="deleteMovement" data-id="${x.id}">×</button></div>`).join('')||`<div class="empty"><strong>Nenhuma movimentação</strong><br>Registre uma entrada ou saída.</div>`;}
 
 function pageCash(){const t=totals();return `<div class="page">${header('Caixa','Controle de entradas e saídas')}<div class="grid2"><button class="quick greenbtn" data-action="quickIn">＋ Entrada rápida</button><button class="quick redbtn" data-action="quickOut">− Saída rápida</button></div><div class="metric-row"><div class="metric"><span>Total Entradas</span><b class="green">${money(t.incoming)}</b></div><div class="metric"><span>Total Saídas</span><b class="red">${money(t.outgoing)}</b></div></div><div class="fin-card balance-card"><div class="page-sub">SALDO DO PERÍODO</div><div class="balance-big ${t.balance>=0?'green':'red'}">${money(t.balance)}</div></div><div class="section-title">Movimentações recentes</div>${movementRows(data.movements.slice().reverse())}</div>`;}
 
@@ -182,8 +232,8 @@ function pageReports(){
 }
 function pageCategories(){const map={};data.expenses.forEach(e=>map[e.category]=(map[e.category]||0)+num(e.value));return `<div class="page">${header('Despesas por Categoria',`Mês ${brMonth(today())}`)}${Object.entries(map).map(([k,v])=>`<div class="row"><div class="row-icon">${iconFor(k)}</div><div class="row-main"><b>${esc(k)}</b><small>Despesas registradas</small></div><div class="row-price red">${money(v)}</div></div>`).join('')||'<div class="empty">Sem despesas.</div>'}</div>`;}
 function pageMore(){return `<div class="page">${header('Mais','Configurações e ferramentas')}<div class="more-list">${[['Categorias','Gerencie categorias','categories'],['Calendário','Visualize o fluxo por dia','calendar'],['Relatórios','Veja resultados e indicadores','reports'],['Configurações','Meta, deduplicação e backup','settings'],['Sobre o KINGS','Versão 9.2.1','about']].map(x=>`<button class="row" style="width:100%;text-align:left" data-nav="${x[2]}"><div class="row-icon">◆</div><div class="row-main"><b>${x[0]}</b><small>${x[1]}</small></div><span>›</span></button>`).join('')}</div></div>`;}
-function pageSettings(){return `<div class="page">${header('Configurações','KINGS 9.2.1')}<div class="fin-card"><div class="section-title" style="margin-top:0">Meta diária</div><input id="goalInput" class="search" type="number" step="0.01" value="${data.goal||''}" placeholder="Ex.: 1000"><button class="save" data-action="saveGoal">Salvar meta</button></div><div class="fin-card"><div class="section-title" style="margin-top:0">Deduplicação automática</div><p class="page-sub">O sistema verifica cortes, clientes, receitas, despesas e movimentações antes de salvar.</p><button class="save" data-action="dedupe">Verificar e eliminar duplicados</button></div><div class="fin-card"><div class="section-title" style="margin-top:0">Backup</div><button class="save" data-action="export">Exportar backup JSON</button><button class="save secondary" data-action="import">Importar backup JSON</button><input id="importFile" type="file" accept="application/json" hidden></div></div>`;}
-function pageAbout(){return `<div class="page">${header('Sobre o KINGS','Sistema Financeiro')}<div class="hero"><div class="hero-kicker">KINGS 9.2.1</div><h1 style="font-size:32px">Completo e funcional</h1><div class="accent">Offline • PWA • Dados salvos no aparelho</div><div class="section-title">✓ Entradas e saídas</div><div class="section-title">✓ Receitas e despesas</div><div class="section-title">✓ Clientes e cortes</div><div class="section-title">✓ Deduplicação automática</div></div></div>`;}
+function pageSettings(){return `<div class="page">${header('Configurações','KINGS 9.2.2')}<div class="fin-card"><div class="section-title" style="margin-top:0">Meta diária</div><input id="goalInput" class="search" type="number" step="0.01" value="${data.goal||''}" placeholder="Ex.: 1000"><button class="save" data-action="saveGoal">Salvar meta</button></div><div class="fin-card"><div class="section-title" style="margin-top:0">Deduplicação automática</div><p class="page-sub">O sistema verifica cortes, clientes, receitas, despesas e movimentações antes de salvar.</p><button class="save" data-action="dedupe">Verificar e eliminar duplicados</button></div><div class="fin-card"><div class="section-title" style="margin-top:0">Backup</div><button class="save" data-action="export">Exportar backup JSON</button><button class="save secondary" data-action="import">Importar backup JSON</button><input id="importFile" type="file" accept="application/json" hidden></div></div>`;}
+function pageAbout(){return `<div class="page">${header('Sobre o KINGS','Sistema Financeiro')}<div class="hero"><div class="hero-kicker">KINGS 9.2.2</div><h1 style="font-size:32px">Completo e funcional</h1><div class="accent">Offline • PWA • Dados salvos no aparelho</div><div class="section-title">✓ Entradas e saídas</div><div class="section-title">✓ Receitas e despesas</div><div class="section-title">✓ Clientes e cortes</div><div class="section-title">✓ Deduplicação automática</div></div></div>`;}
 const pages={home:pageHome,cash:pageCash,expenses:pageExpenses,clients:pageClients,receivables:pageReceivables,calendar:pageCalendar,reports:pageReports,categories:pageCategories,more:pageMore,settings:pageSettings,about:pageAbout};
 
 function bindActions(){
@@ -255,7 +305,17 @@ function markExpense(id){
   else {e.status='Pago';if(!data.movements.some(m=>m.sourceId===id))data.movements.push({id:uid('m'),type:'out',desc:e.desc,value:e.value,date:today(),sourceId:e.id});}
   persist();render();
 }
-function remove(type,id){data[type]=data[type].filter(x=>x.id!==id);persist();render();}
+function remove(type,id){
+  if(type==='movements'){
+    const m=data.movements.find(x=>x.id===id);
+    if(m?.sourceId){
+      if(m.sourceId.startsWith('cut_')){ data.cuts=data.cuts.filter(x=>x.id!==m.sourceId); data.revenues=data.revenues.filter(x=>x.sourceId!==m.sourceId); }
+      if(m.sourceId.startsWith('e_')){ const e=data.expenses.find(x=>x.id===m.sourceId); if(e) e.status='A vencer'; }
+      if(m.sourceId.startsWith('r_')){ const r=data.revenues.find(x=>x.id===m.sourceId); if(r) r.status='A receber'; }
+    }
+  }
+  data[type]=data[type].filter(x=>x.id!==id); persist(); render();
+}
 function countAll(d){return ['cuts','clients','revenues','expenses','movements'].reduce((a,k)=>a+(d[k]?.length||0),0);}
 function brMonth(v){const [y,m]=String(v).slice(0,7).split('-');return `${m}/${y}`;}
 function iconFor(k){return ({Aluguel:'⌂',Mercadorias:'🛒','Contas Fixas':'●',Cartão:'▣',Materiais:'✂','Folha de Pagamento':'$'}[k]||'◆');}
@@ -288,10 +348,10 @@ document.addEventListener('click', e=>{
   else if(act==='revenueFilter'){revenueFilter=a.dataset.filter;render();}
   else if(act==='saveGoal'){data.goal=num(document.getElementById('goalInput')?.value);persist();alert('Meta salva.');render();}
   else if(act==='dedupe'){const before=countAll(data);data=dedupeAll(data);persist();alert(`${before-countAll(data)} duplicado(s) removido(s).`);render();}
-  else if(act==='export'){download(`kings-9.2.1-backup-${today()}.json`,JSON.stringify(data,null,2),'application/json');}
+  else if(act==='export'){download(`kings-9.2.2-backup-${today()}.json`,JSON.stringify(data,null,2),'application/json');}
   else if(act==='import')document.getElementById('importFile')?.click();
 });
 document.addEventListener('change',e=>{if(e.target.id==='importFile'&&e.target.files[0])importBackup(e.target.files[0]);});
 document.getElementById('modal')?.addEventListener('click',e=>{if(e.target.id==='modal')closeModal();});
 render();
-if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=9.2.1').catch(()=>{});
+if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=9.2.2').catch(()=>{});
