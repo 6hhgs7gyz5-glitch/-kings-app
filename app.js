@@ -1,5 +1,5 @@
-const KEY = 'kings92_data_v2';
-const OLD_KEYS = ['kings92_data_v1','kings92_data','kings_data_v2','kings_data'];
+const KEY = 'kings92_data_v3';
+const OLD_KEYS = ['kings92_data_v2','kings92_data_v1','kings92_data','kings_data_v2','kings_data'];
 const LEGACY_CUTS='kings_cuts_v3', LEGACY_EXPENSES='kings_expenses_v3', LEGACY_CFG='kings_cfg_v3';
 
 const today = () => { const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
@@ -62,7 +62,7 @@ function ensureShape(d){
   d.clients = d.clients.map(x=>({...x,id:x.id||uid('c')}));
   d.cuts = d.cuts.map(x=>({...x,id:x.id||uid('cut'),value:num(x.value),date:x.date||today(),payment:x.payment||'Recebido'}));
   d.revenues = d.revenues.map(x=>({...x,id:x.id||uid('r'),value:num(x.value),date:x.date||today(),status:x.status||'A receber'}));
-  d.expenses = d.expenses.map(x=>({...x,id:x.id||uid('e'),value:num(x.value),date:x.date||today(),status:x.status||'A vencer'}));
+  d.expenses = d.expenses.map(x=>({...x,id:x.id||uid('e'),value:num(x.value),date:x.date||today(),status:x.status||'A vencer',installment:Number(x.installment)||1,totalInstallments:Number(x.totalInstallments)||1,parentId:x.parentId||null}));
   d.movements = d.movements.map(x=>({...x,id:x.id||uid('m'),value:num(x.value),date:x.date||today(),type:x.type==='out'?'out':'in'}));
   return d;
 }
@@ -195,13 +195,13 @@ function pageExpenses(){
   const filtered=data.expenses.filter(e=>expenseFilter==='Todas'||e.status===expenseFilter||(expenseFilter==='Vencidas'&&e.status==='A vencer'&&e.date<today()));
   return `<div class="page">${header('Despesas','Gerencie suas despesas')}<div class="filter">${['Todas','A vencer','Vencidas','Pagas'].map(f=>`<button class="${expenseFilter===f?'active':''}" data-action="expenseFilter" data-filter="${f}">${f}</button>`).join('')}</div>${filtered.map(expenseRow).join('')||`<div class="empty">Nenhuma despesa encontrada.</div>`}<button class="fab" data-action="addExpense">＋</button></div>`;
 }
-function expenseRow(e){return `<div class="row"><div class="row-icon">${iconFor(e.category)}</div><div class="row-main"><b>${esc(e.desc)}</b><small>Venc: ${brDate(e.date)} · ${esc(e.category)}</small><div class="actions"><button class="mini ${e.status==='Pago'?'green':''}" data-action="toggleExpense" data-id="${e.id}">${e.status==='Pago'?'Pago':'Marcar como pago'}</button><button class="mini red" data-action="deleteExpense" data-id="${e.id}">Excluir</button></div></div><div style="text-align:right"><div class="row-price red">${money(e.value)}</div><small class="${e.status==='Pago'?'green':'gold'}">${e.status}</small></div></div>`;}
+function expenseRow(e){return `<div class="row"><div class="row-icon">${iconFor(e.category)}</div><div class="row-main"><b>${esc(e.desc)}</b><small>Venc: ${brDate(e.date)} · ${esc(e.category)}${e.totalInstallments>1?` · Parcela ${e.installment}/${e.totalInstallments}`:''}</small><div class="actions"><button class="mini action-paid ${e.status==='Pago'?'green':''}" data-action="toggleExpense" data-id="${e.id}">${e.status==='Pago'?'Pago':'Marcar como pago'}</button><button class="mini action-delete" data-action="deleteExpense" data-id="${e.id}">Excluir</button></div></div><div style="text-align:right"><div class="row-price red">${money(e.value)}</div><small class="${e.status==='Pago'?'green':'gold'}">${e.status}</small></div></div>`;}
 
 function pageReceivables(){
   const filtered=data.revenues.filter(r=>revenueFilter==='Todas'||(revenueFilter==='A receber'&&r.status!=='Recebida')||(revenueFilter==='Recebidas'&&r.status==='Recebida'));
   return `<div class="page">${header('Receitas','Contas a receber')}<div class="filter">${['Todas','A receber','Recebidas'].map(f=>`<button class="${revenueFilter===f?'active':''}" data-action="revenueFilter" data-filter="${f}">${f}</button>`).join('')}</div>${filtered.map(revenueRow).join('')||`<div class="empty">Nenhuma receita encontrada.</div>`}<button class="fab" data-action="addRevenue">＋</button></div>`;
 }
-function revenueRow(r){return `<div class="row"><div class="row-icon">♙</div><div class="row-main"><b>${esc(r.client)}</b><small>${brDate(r.date)}<br>${esc(r.desc)}</small><div class="actions"><button class="mini ${r.status==='Recebida'?'green':''}" data-action="toggleRevenue" data-id="${r.id}">${r.status==='Recebida'?'Recebida':'Marcar como recebida'}</button><button class="mini red" data-action="deleteRevenue" data-id="${r.id}">Excluir</button></div></div><div style="text-align:right"><div class="row-price ${r.status==='Recebida'?'green':'red'}">${money(r.value)}</div><small class="${r.status==='Recebida'?'green':'gold'}">${r.status}</small></div></div>`;}
+function revenueRow(r){return `<div class="row"><div class="row-icon">♙</div><div class="row-main"><b>${esc(r.client)}</b><small>${brDate(r.date)}<br>${esc(r.desc)}</small><div class="actions"><button class="mini action-paid ${r.status==='Recebida'?'green':''}" data-action="toggleRevenue" data-id="${r.id}">${r.status==='Recebida'?'Recebida':'Marcar como recebida'}</button><button class="mini action-delete" data-action="deleteRevenue" data-id="${r.id}">Excluir</button></div></div><div style="text-align:right"><div class="row-price ${r.status==='Recebida'?'green':'red'}">${money(r.value)}</div><small class="${r.status==='Recebida'?'green':'gold'}">${r.status}</small></div></div>`;}
 
 function pageClients(){return `<div class="page">${header('Clientes','Seus clientes cadastrados')}<input class="search" id="clientSearch" placeholder="⌕  Buscar cliente..."><div id="clientList">${clientRows(data.clients)}</div><button class="fab" data-action="addClient">＋</button></div>`;}
 function clientStats(c){
@@ -211,7 +211,7 @@ function clientStats(c){
   const open=rev.filter(x=>x.status!=='Recebida').reduce((a,x)=>a+num(x.value),0)+cuts.filter(x=>x.payment!=='Recebido').reduce((a,x)=>a+num(x.value),0);
   return {spent,open};
 }
-function clientRows(arr){return arr.map(c=>{const s=clientStats(c);return `<div class="row"><div class="row-icon">♙</div><div class="row-main"><b>${esc(c.name)}</b><small>${esc(c.phone||'')}<br>Total gasto: ${money(s.spent)}</small><div class="actions"><button class="mini blue" data-action="addCut" data-client="${esc(c.name)}">Novo corte</button><button class="mini red" data-action="deleteClient" data-id="${c.id}">Excluir</button></div></div><div style="text-align:right"><small class="${s.open?'red':'green'}">${s.open?'Em aberto':'✓'}</small><div class="row-price ${s.open?'red':'green'}">${money(s.open)}</div></div></div>`;}).join('')||`<div class="empty">Nenhum cliente cadastrado.</div>`;}
+function clientRows(arr){return arr.map(c=>{const s=clientStats(c);return `<div class="row"><div class="row-icon">♙</div><div class="row-main"><b>${esc(c.name)}</b><small>${esc(c.phone||'')}<br>Total gasto: ${money(s.spent)}</small><div class="actions"><button class="mini action-primary" data-action="addCut" data-client="${esc(c.name)}">Novo corte</button><button class="mini action-delete" data-action="deleteClient" data-id="${c.id}">Excluir</button></div></div><div style="text-align:right"><small class="${s.open?'red':'green'}">${s.open?'Em aberto':'✓'}</small><div class="row-price ${s.open?'red':'green'}">${money(s.open)}</div></div></div>`;}).join('')||`<div class="empty">Nenhum cliente cadastrado.</div>`;}
 
 function pageCalendar(){
   const now=new Date(); const y=now.getFullYear(),m=now.getMonth(); const first=new Date(y,m,1).getDay(); const days=new Date(y,m+1,0).getDate();
@@ -221,9 +221,12 @@ function pageCalendar(){
     const ds=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const ins=data.movements.filter(x=>x.type==='in'&&x.date===ds).reduce((a,x)=>a+num(x.value),0);
     const outs=data.movements.filter(x=>x.type==='out'&&x.date===ds).reduce((a,x)=>a+num(x.value),0);
-    cells+=`<div class="cal-cell"><b>${d}</b>${ins?`<span class="pill in">+${money(ins)}</span>`:''}${outs?`<span class="pill out">-${money(outs)}</span>`:''}</div>`;
+    const payable=data.expenses.filter(x=>x.status!=='Pago'&&x.date===ds).reduce((a,x)=>a+num(x.value),0);
+    const receivable=data.revenues.filter(x=>x.status!=='Recebida'&&x.date===ds).reduce((a,x)=>a+num(x.value),0);
+    const cls=ds===today()?' today':'';
+    cells+=`<div class="cal-cell${cls}"><b>${d}</b>${ins?`<span class="pill in">Recebido ${money(ins)}</span>`:''}${outs?`<span class="pill out">Saída ${money(outs)}</span>`:''}${payable?`<span class="pill pay">A pagar ${money(payable)}</span>`:''}${receivable?`<span class="pill recv">A receber ${money(receivable)}</span>`:''}</div>`;
   }
-  return `<div class="page">${header('Calendário','Visualize entradas e saídas')}<div class="calendar">${cells}</div></div>`;
+  return `<div class="page">${header('Calendário','Recebidos, saídas, contas a pagar e a receber')}<div class="calendar-legend"><span><i class="dot in"></i>Recebidos</span><span><i class="dot out"></i>Saídas</span><span><i class="dot pay"></i>A pagar</span><span><i class="dot recv"></i>A receber</span></div><div class="calendar">${cells}</div></div>`;
 }
 function pageReports(){
   const t=totals(), margin=t.incoming?((t.profit/t.incoming)*100):0;
@@ -232,8 +235,8 @@ function pageReports(){
 }
 function pageCategories(){const map={};data.expenses.forEach(e=>map[e.category]=(map[e.category]||0)+num(e.value));return `<div class="page">${header('Despesas por Categoria',`Mês ${brMonth(today())}`)}${Object.entries(map).map(([k,v])=>`<div class="row"><div class="row-icon">${iconFor(k)}</div><div class="row-main"><b>${esc(k)}</b><small>Despesas registradas</small></div><div class="row-price red">${money(v)}</div></div>`).join('')||'<div class="empty">Sem despesas.</div>'}</div>`;}
 function pageMore(){return `<div class="page">${header('Mais','Configurações e ferramentas')}<div class="more-list">${[['Categorias','Gerencie categorias','categories'],['Calendário','Visualize o fluxo por dia','calendar'],['Relatórios','Veja resultados e indicadores','reports'],['Configurações','Meta, deduplicação e backup','settings'],['Sobre o KINGS','Versão 9.2.1','about']].map(x=>`<button class="row" style="width:100%;text-align:left" data-nav="${x[2]}"><div class="row-icon">◆</div><div class="row-main"><b>${x[0]}</b><small>${x[1]}</small></div><span>›</span></button>`).join('')}</div></div>`;}
-function pageSettings(){return `<div class="page">${header('Configurações','KINGS 9.2.2')}<div class="fin-card"><div class="section-title" style="margin-top:0">Meta diária</div><input id="goalInput" class="search" type="number" step="0.01" value="${data.goal||''}" placeholder="Ex.: 1000"><button class="save" data-action="saveGoal">Salvar meta</button></div><div class="fin-card"><div class="section-title" style="margin-top:0">Deduplicação automática</div><p class="page-sub">O sistema verifica cortes, clientes, receitas, despesas e movimentações antes de salvar.</p><button class="save" data-action="dedupe">Verificar e eliminar duplicados</button></div><div class="fin-card"><div class="section-title" style="margin-top:0">Backup</div><button class="save" data-action="export">Exportar backup JSON</button><button class="save secondary" data-action="import">Importar backup JSON</button><input id="importFile" type="file" accept="application/json" hidden></div></div>`;}
-function pageAbout(){return `<div class="page">${header('Sobre o KINGS','Sistema Financeiro')}<div class="hero"><div class="hero-kicker">KINGS 9.2.2</div><h1 style="font-size:32px">Completo e funcional</h1><div class="accent">Offline • PWA • Dados salvos no aparelho</div><div class="section-title">✓ Entradas e saídas</div><div class="section-title">✓ Receitas e despesas</div><div class="section-title">✓ Clientes e cortes</div><div class="section-title">✓ Deduplicação automática</div></div></div>`;}
+function pageSettings(){return `<div class="page">${header('Configurações','KINGS 9.2.3')}<div class="fin-card"><div class="section-title" style="margin-top:0">Meta diária</div><input id="goalInput" class="search" type="number" step="0.01" value="${data.goal||''}" placeholder="Ex.: 1000"><button class="save" data-action="saveGoal">Salvar meta</button></div><div class="fin-card"><div class="section-title" style="margin-top:0">Deduplicação automática</div><p class="page-sub">O sistema verifica cortes, clientes, receitas, despesas e movimentações antes de salvar.</p><button class="save" data-action="dedupe">Verificar e eliminar duplicados</button></div><div class="fin-card"><div class="section-title" style="margin-top:0">Backup</div><button class="save" data-action="export">Exportar backup JSON</button><button class="save secondary" data-action="import">Importar backup JSON</button><input id="importFile" type="file" accept="application/json" hidden></div></div>`;}
+function pageAbout(){return `<div class="page">${header('Sobre o KINGS','Sistema Financeiro')}<div class="hero"><div class="hero-kicker">KINGS 9.2.3</div><h1 style="font-size:32px">Completo e funcional</h1><div class="accent">Offline • PWA • Dados salvos no aparelho</div><div class="section-title">✓ Entradas e saídas</div><div class="section-title">✓ Receitas e despesas</div><div class="section-title">✓ Clientes e cortes</div><div class="section-title">✓ Deduplicação automática</div></div></div>`;}
 const pages={home:pageHome,cash:pageCash,expenses:pageExpenses,clients:pageClients,receivables:pageReceivables,calendar:pageCalendar,reports:pageReports,categories:pageCategories,more:pageMore,settings:pageSettings,about:pageAbout};
 
 function bindActions(){
@@ -247,10 +250,13 @@ function field(label,id,type='text',value='',extra=''){return `<div class="field
 function requireValue(id,label){const el=document.getElementById(id);if(!el||!String(el.value).trim()){alert(`Informe ${label}.`);el?.focus();return false;}return true;}
 
 function openEntry(type){
-  openModal(`<h2>${type==='in'?'Nova Entrada':'Nova Saída'}</h2>${field('DESCRIÇÃO','fDesc','text','')}${field('VALOR','fValue','number','','step="0.01" min="0.01"')}${field('DATA','fDate','date',today())}<button class="save" id="modalSave">Salvar</button>`);
+  const title=type==='in'?'Nova Entrada':'Nova Saída';
+  const defaultDesc=type==='in'?'Entrada rápida':'Saída rápida';
+  openModal(`<h2>${title}</h2>${field('DESCRIÇÃO (OPCIONAL)','fDesc','text','')}${field('VALOR','fValue','number','','step="0.01" min="0.01"')}${field('DATA','fDate','date',today())}<button class="save" id="modalSave">Salvar</button>`);
   document.getElementById('modalSave').onclick=()=>{
-    if(!requireValue('fDesc','a descrição')||!requireValue('fValue','o valor')||!requireValue('fDate','a data'))return;
-    data.movements.push({id:uid('m'),type,desc:document.getElementById('fDesc').value.trim(),value:num(document.getElementById('fValue').value),date:document.getElementById('fDate').value});
+    if(!requireValue('fValue','o valor')||!requireValue('fDate','a data'))return;
+    const desc=document.getElementById('fDesc').value.trim()||defaultDesc;
+    data.movements.push({id:uid('m'),type,desc,value:num(document.getElementById('fValue').value),date:document.getElementById('fDate').value});
     persist();closeModal();render();
   };
 }
@@ -272,12 +278,28 @@ function openCut(clientName=''){
 }
 function openExpense(){
   const cats=data.categories.map(c=>`<option>${esc(c)}</option>`).join('');
-  openModal(`<h2>Nova Despesa</h2>${field('DESCRIÇÃO','eDesc')}${field('VALOR','eValue','number','','step="0.01" min="0.01"')}<div class="field"><label>CATEGORIA</label><select id="eCat" class="input">${cats}</select></div>${field('VENCIMENTO','eDate','date',today())}<div class="field"><label>STATUS</label><select id="eStatus" class="input"><option>A vencer</option><option>Pago</option></select></div><button class="save" id="modalSave">Salvar despesa</button>`);
+  openModal(`<h2>Nova Despesa</h2>${field('DESCRIÇÃO (OPCIONAL)','eDesc')} ${field('VALOR TOTAL','eValue','number','','step="0.01" min="0.01"')}<div class="field"><label>CATEGORIA</label><select id="eCat" class="input">${cats}</select></div>${field('DATA DE VENCIMENTO','eDate','date',today())}<div class="field"><label>PARCELAMENTO</label><select id="eInstallments" class="input"><option value="1">À vista</option><option value="2">2 parcelas</option><option value="3">3 parcelas</option><option value="4">4 parcelas</option><option value="5">5 parcelas</option><option value="6">6 parcelas</option><option value="10">10 parcelas</option><option value="12">12 parcelas</option></select></div><div class="field"><label>STATUS DA 1ª PARCELA</label><select id="eStatus" class="input"><option>A vencer</option><option>Pago</option></select></div><div id="installmentPreview" class="installment-preview"></div><button class="save" id="modalSave">Salvar despesa</button>`);
+  const updatePreview=()=>{
+    const total=num(document.getElementById('eValue')?.value); const n=Number(document.getElementById('eInstallments')?.value)||1;
+    const part=n?total/n:0; const el=document.getElementById('installmentPreview');
+    if(el) el.innerHTML=n>1&&total?`Valor aproximado por parcela: <b>${money(part)}</b><br><small>${n} vencimentos mensais a partir de ${brDate(document.getElementById('eDate')?.value)}</small>`:'';
+  };
+  document.getElementById('eValue')?.addEventListener('input',updatePreview);
+  document.getElementById('eInstallments')?.addEventListener('change',updatePreview);
+  document.getElementById('eDate')?.addEventListener('change',updatePreview);
+  updatePreview();
   document.getElementById('modalSave').onclick=()=>{
-    if(!requireValue('eDesc','a descrição')||!requireValue('eValue','o valor')||!requireValue('eDate','a data'))return;
-    const e={id:uid('e'),desc:document.getElementById('eDesc').value.trim(),value:num(document.getElementById('eValue').value),category:document.getElementById('eCat').value,date:document.getElementById('eDate').value,status:document.getElementById('eStatus').value};
-    data.expenses.push(e);
-    if(e.status==='Pago') data.movements.push({id:uid('m'),type:'out',desc:e.desc,value:e.value,date:e.date,sourceId:e.id});
+    if(!requireValue('eValue','o valor')||!requireValue('eDate','a data'))return;
+    const total=num(document.getElementById('eValue').value), n=Number(document.getElementById('eInstallments').value)||1, baseDate=document.getElementById('eDate').value, status=document.getElementById('eStatus').value, desc=document.getElementById('eDesc').value.trim()||'Despesa';
+    const category=document.getElementById('eCat').value;
+    const cents=Math.round(total*100), base=Math.floor(cents/n), remainder=cents-base*n;
+    for(let i=1;i<=n;i++){
+      const due=new Date(baseDate+'T12:00:00'); due.setMonth(due.getMonth()+i-1);
+      const value=(base+(i===n?remainder:0))/100;
+      const e={id:uid('e'),desc:n>1?`${desc} (${i}/${n})`:desc,value,category,date:due.toISOString().slice(0,10),status:(i===1?status:'A vencer'),installment:i,totalInstallments:n,parentId:null};
+      data.expenses.push(e);
+      if(e.status==='Pago') data.movements.push({id:uid('m'),type:'out',desc:e.desc,value:e.value,date:e.date,sourceId:e.id});
+    }
     persist();closeModal();render();
   };
 }
@@ -285,8 +307,8 @@ function openRevenue(){
   const opts=data.clients.map(c=>`<option>${esc(c.name)}</option>`).join('');
   openModal(`<h2>Nova Receita</h2><div class="field"><label>CLIENTE</label><input id="rClient" class="input" list="clientOptions" placeholder="Nome do cliente"><datalist id="clientOptions">${opts}</datalist></div>${field('DESCRIÇÃO','rDesc')}${field('VALOR','rValue','number','','step="0.01" min="0.01"')}${field('VENCIMENTO','rDate','date',today())}<div class="field"><label>STATUS</label><select id="rStatus" class="input"><option>A receber</option><option>Recebida</option></select></div><button class="save" id="modalSave">Salvar receita</button>`);
   document.getElementById('modalSave').onclick=()=>{
-    if(!requireValue('rClient','o cliente')||!requireValue('rDesc','a descrição')||!requireValue('rValue','o valor')||!requireValue('rDate','a data'))return;
-    const r={id:uid('r'),client:document.getElementById('rClient').value.trim(),desc:document.getElementById('rDesc').value.trim(),value:num(document.getElementById('rValue').value),date:document.getElementById('rDate').value,status:document.getElementById('rStatus').value};
+    if(!requireValue('rClient','o cliente')||!requireValue('rValue','o valor')||!requireValue('rDate','a data'))return;
+    const r={id:uid('r'),client:document.getElementById('rClient').value.trim(),desc:document.getElementById('rDesc').value.trim()||'Receita',value:num(document.getElementById('rValue').value),date:document.getElementById('rDate').value,status:document.getElementById('rStatus').value};
     data.revenues.push(r);
     if(r.status==='Recebida') data.movements.push({id:uid('m'),type:'in',desc:`${r.desc} - ${r.client}`,value:r.value,date:r.date,sourceId:r.id});
     persist();closeModal();render();
@@ -348,10 +370,10 @@ document.addEventListener('click', e=>{
   else if(act==='revenueFilter'){revenueFilter=a.dataset.filter;render();}
   else if(act==='saveGoal'){data.goal=num(document.getElementById('goalInput')?.value);persist();alert('Meta salva.');render();}
   else if(act==='dedupe'){const before=countAll(data);data=dedupeAll(data);persist();alert(`${before-countAll(data)} duplicado(s) removido(s).`);render();}
-  else if(act==='export'){download(`kings-9.2.2-backup-${today()}.json`,JSON.stringify(data,null,2),'application/json');}
+  else if(act==='export'){download(`kings-9.2.3-backup-${today()}.json`,JSON.stringify(data,null,2),'application/json');}
   else if(act==='import')document.getElementById('importFile')?.click();
 });
 document.addEventListener('change',e=>{if(e.target.id==='importFile'&&e.target.files[0])importBackup(e.target.files[0]);});
 document.getElementById('modal')?.addEventListener('click',e=>{if(e.target.id==='modal')closeModal();});
 render();
-if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=9.2.2').catch(()=>{});
+if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=9.2.3').catch(()=>{});
