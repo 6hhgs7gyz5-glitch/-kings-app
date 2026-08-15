@@ -1,6 +1,7 @@
-const KEY = 'kings92_data_v3';
+const KEY = 'kings92_data_v4';
 const OLD_KEYS = ['kings92_data_v2','kings92_data_v1','kings92_data','kings_data_v2','kings_data'];
 const LEGACY_CUTS='kings_cuts_v3', LEGACY_EXPENSES='kings_expenses_v3', LEGACY_CFG='kings_cfg_v3';
+const APP_VERSION='9.2.6';
 
 const today = () => { const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
 const monthKey = d => String(d || '').slice(0,7);
@@ -14,39 +15,15 @@ const num = v => Math.max(0, Number(String(v ?? '').replace(',','.')) || 0);
 
 const seed = {
   cuts: [],
-  clients: [
-    {id:'c1',name:'João Silva',phone:'(11) 99999-9999'},
-    {id:'c2',name:'Maria Santos',phone:'(11) 98888-8888'},
-    {id:'c3',name:'Pedro Oliveira',phone:'(11) 97777-7777'},
-    {id:'c4',name:'Lucas Mendes',phone:'(11) 96666-6666'},
-    {id:'c5',name:'Gabriel Lima',phone:'(11) 95555-5555'},
-    {id:'c6',name:'Felipe Rocha',phone:'(11) 94444-4444'}
-  ],
-  revenues: [
-    {id:'r1',client:'João Silva',desc:'Serviço de Barba',value:150,date:'2026-08-20',status:'A receber'},
-    {id:'r2',client:'Maria Santos',desc:'Coloração',value:80,date:'2026-08-18',status:'A receber'},
-    {id:'r3',client:'Pedro Oliveira',desc:'Corte + Barba',value:200,date:'2026-08-25',status:'A receber'},
-    {id:'r4',client:'Lucas Mendes',desc:'Corte',value:120,date:'2026-08-30',status:'A receber'},
-    {id:'r5',client:'Gabriel Lima',desc:'Pigmentação',value:160,date:'2026-08-31',status:'A receber'}
-  ],
-  expenses: [
-    {id:'e1',desc:'Aluguel da loja',value:500,category:'Aluguel',date:'2026-08-14',status:'A vencer'},
-    {id:'e2',desc:'Compra de Produtos',value:1250,category:'Mercadorias',date:'2026-08-16',status:'A vencer'},
-    {id:'e3',desc:'Conta de Luz',value:180,category:'Contas Fixas',date:'2026-08-18',status:'A vencer'},
-    {id:'e4',desc:'Internet',value:120,category:'Contas Fixas',date:'2026-08-20',status:'Pago'},
-    {id:'e5',desc:'Cartão Nubank',value:835,category:'Cartão',date:'2026-08-25',status:'A vencer'},
-    {id:'e6',desc:'Material de Barbearia',value:320,category:'Materiais',date:'2026-08-28',status:'Pago'},
-    {id:'e7',desc:'Salário Funcionário',value:2000,category:'Folha de Pagamento',date:'2026-08-31',status:'A vencer'}
-  ],
-  movements: [
-    {id:'m1',type:'in',desc:'Pagamento - João Silva',value:120,date:'2026-08-14'},
-    {id:'m2',type:'out',desc:'Aluguel da loja',value:500,date:'2026-08-14'},
-    {id:'m3',type:'in',desc:'Serviço - Maria Santos',value:80,date:'2026-08-13'},
-    {id:'m4',type:'out',desc:'Material de limpeza',value:45,date:'2026-08-13'},
-    {id:'m5',type:'in',desc:'Pix - Pedro Oliveira',value:150,date:'2026-08-12'}
-  ],
+  clients: [],
+  revenues: [],
+  expenses: [],
+  movements: [],
   goal: 0,
-  categories: ['Aluguel','Mercadorias','Contas Fixas','Cartão','Materiais','Folha de Pagamento','Outros']
+  categories: ['Aluguel','Mercadorias','Contas Fixas','Cartão','Materiais','Folha de Pagamento','Outros'],
+  accounts: [],
+  paymentMethods: [],
+  security: {appLock:false, hideValues:false}
 };
 
 let data = load();
@@ -58,6 +35,10 @@ function ensureShape(d){
   d = d && typeof d === 'object' ? d : clone(seed);
   ['cuts','clients','revenues','expenses','movements'].forEach(k=>{ if(!Array.isArray(d[k])) d[k]=[]; });
   if(!Array.isArray(d.categories)) d.categories = clone(seed.categories);
+  if(!Array.isArray(d.accounts)) d.accounts = clone(seed.accounts);
+  if(!Array.isArray(d.paymentMethods)) d.paymentMethods = clone(seed.paymentMethods);
+  if(!d.security || typeof d.security!=='object') d.security = clone(seed.security);
+  d.security.appLock=!!d.security.appLock; d.security.hideValues=!!d.security.hideValues;
   if(typeof d.goal !== 'number') d.goal = num(d.goal);
   d.clients = d.clients.map(x=>({...x,id:x.id||uid('c')}));
   d.cuts = d.cuts.map(x=>({...x,id:x.id||uid('cut'),value:num(x.value),date:x.date||today(),payment:x.payment||'Recebido'}));
@@ -91,7 +72,16 @@ function dedupeAll(d){
   d.cuts=dedupe(d.cuts,['client','value','date','service','payment']);
   return d;
 }
-function persist(){ data=ensureShape(dedupeAll(data)); localStorage.setItem(KEY,JSON.stringify(data)); }
+function removeBuiltInDemoData(d){
+  const demoIds=new Set(['c1','c2','c3','c4','c5','c6','r1','r2','r3','r4','r5','e1','e2','e3','e4','e5','e6','e7','m1','m2','m3','m4','m5']);
+  for(const k of ['clients','revenues','expenses','movements','cuts']) d[k]=Array.isArray(d[k])?d[k].filter(x=>!demoIds.has(x.id)):[];
+  const builtInAccounts=new Set(['Conta principal','Caixa da barbearia']);
+  const builtInPayments=new Set(['Dinheiro','Pix','Cartão de débito','Cartão de crédito','Transferência']);
+  if(Array.isArray(d.accounts)) d.accounts=d.accounts.filter(x=>!builtInAccounts.has(x));
+  if(Array.isArray(d.paymentMethods)) d.paymentMethods=d.paymentMethods.filter(x=>!builtInPayments.has(x));
+  return d;
+}
+function persist(){ data=ensureShape(dedupeAll(removeBuiltInDemoData(data))); localStorage.setItem(KEY,JSON.stringify(data)); }
 function migrateLegacy(){
   let d=clone(seed);
   try{
@@ -121,8 +111,8 @@ function load(){
   try{
     let raw=localStorage.getItem(KEY);
     if(!raw){ for(const k of OLD_KEYS){ raw=localStorage.getItem(k); if(raw) break; } }
-    if(raw){ const d=ensureShape(JSON.parse(raw)); const clean=dedupeAll(d); localStorage.setItem(KEY,JSON.stringify(clean)); return clean; }
-    const migrated=migrateLegacy();
+    if(raw){ const d=ensureShape(JSON.parse(raw)); const clean=dedupeAll(removeBuiltInDemoData(d)); localStorage.setItem(KEY,JSON.stringify(clean)); return clean; }
+    const migrated=removeBuiltInDemoData(migrateLegacy());
     localStorage.setItem(KEY,JSON.stringify(migrated));
     return migrated;
   }catch(e){ const d=clone(seed); localStorage.setItem(KEY,JSON.stringify(d)); return d; }
@@ -205,10 +195,21 @@ function revenueRow(r){return `<div class="row"><div class="row-icon">♙</div><
 
 function pageClients(){return `<div class="page">${header('Clientes','Seus clientes cadastrados')}<input class="search" id="clientSearch" placeholder="⌕  Buscar cliente..."><div id="clientList">${clientRows(data.clients)}</div><button class="fab" data-action="addClient">＋</button></div>`;}
 function clientStats(c){
-  const cuts=data.cuts.filter(x=>norm(x.client)===norm(c.name));
-  const rev=data.revenues.filter(x=>norm(x.client)===norm(c.name));
-  const spent=cuts.reduce((a,x)=>a+num(x.value),0)+rev.filter(x=>x.status==='Recebida').reduce((a,x)=>a+num(x.value),0);
-  const open=rev.filter(x=>x.status!=='Recebida').reduce((a,x)=>a+num(x.value),0)+cuts.filter(x=>x.payment!=='Recebido').reduce((a,x)=>a+num(x.value),0);
+  const name=norm(c.name);
+  const cuts=data.cuts.filter(x=>norm(x.client)===name);
+  const rev=data.revenues.filter(x=>norm(x.client)===name);
+  const cutIds=new Set(cuts.map(x=>x.id));
+
+  // Um corte a receber gera uma receita vinculada por sourceId.
+  // Não podemos somar o corte + a receita, pois isso duplica o valor do cliente.
+  const spentCuts=cuts.filter(x=>x.payment==='Recebido').reduce((a,x)=>a+num(x.value),0);
+  const spentManualRev=rev.filter(x=>x.status==='Recebida' && !cutIds.has(x.sourceId)).reduce((a,x)=>a+num(x.value),0);
+  const spent=spentCuts+spentManualRev;
+
+  const openRev=rev.filter(x=>x.status!=='Recebida').reduce((a,x)=>a+num(x.value),0);
+  // Compatibilidade com registros antigos que podem ter o corte sem a receita vinculada.
+  const openLegacyCuts=cuts.filter(x=>x.payment!=='Recebido' && !rev.some(r=>r.sourceId===x.id)).reduce((a,x)=>a+num(x.value),0);
+  const open=openRev+openLegacyCuts;
   return {spent,open};
 }
 function clientRows(arr){return arr.map(c=>{const s=clientStats(c);return `<div class="row"><div class="row-icon">♙</div><div class="row-main"><b>${esc(c.name)}</b><small>${esc(c.phone||'')}<br>Total gasto: ${money(s.spent)}</small><div class="actions"><button class="mini action-primary" data-action="addCut" data-client="${esc(c.name)}">Novo corte</button><button class="mini action-delete" data-action="deleteClient" data-id="${c.id}">Excluir</button></div></div><div style="text-align:right"><small class="${s.open?'red':'green'}">${s.open?'Em aberto':'✓'}</small><div class="row-price ${s.open?'red':'green'}">${money(s.open)}</div></div></div>`;}).join('')||`<div class="empty">Nenhum cliente cadastrado.</div>`;}
@@ -234,10 +235,46 @@ function pageReports(){
   return `<div class="page">${header('Relatórios','Análises e gráficos')}<div class="metric-row"><div class="metric"><span>Entradas</span><b class="green">${money(t.incoming)}</b></div><div class="metric"><span>Saídas</span><b class="red">${money(t.outgoing)}</b></div><div class="metric"><span>Lucro</span><b class="blue">${money(t.profit)}</b></div><div class="metric"><span>Margem</span><b class="gold">${margin.toFixed(2).replace('.',',')}%</b></div></div><div class="fin-card"><b>Despesas por categoria</b>${Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="row"><div class="row-main"><b>${esc(k)}</b></div><div class="row-price red">${money(v)}</div></div>`).join('')||'<div class="empty">Sem despesas.</div>'}</div></div>`;
 }
 function pageCategories(){const map={};data.expenses.forEach(e=>map[e.category]=(map[e.category]||0)+num(e.value));return `<div class="page">${header('Despesas por Categoria',`Mês ${brMonth(today())}`)}${Object.entries(map).map(([k,v])=>`<div class="row"><div class="row-icon">${iconFor(k)}</div><div class="row-main"><b>${esc(k)}</b><small>Despesas registradas</small></div><div class="row-price red">${money(v)}</div></div>`).join('')||'<div class="empty">Sem despesas.</div>'}</div>`;}
-function pageMore(){return `<div class="page">${header('Mais','Configurações e ferramentas')}<div class="more-list">${[['Categorias','Gerencie categorias','categories'],['Calendário','Visualize o fluxo por dia','calendar'],['Relatórios','Veja resultados e indicadores','reports'],['Configurações','Meta, deduplicação e backup','settings'],['Sobre o KINGS','Versão 9.2.1','about']].map(x=>`<button class="row" style="width:100%;text-align:left" data-nav="${x[2]}"><div class="row-icon">◆</div><div class="row-main"><b>${x[0]}</b><small>${x[1]}</small></div><span>›</span></button>`).join('')}</div></div>`;}
-function pageSettings(){return `<div class="page">${header('Configurações','KINGS 9.2.3')}<div class="fin-card"><div class="section-title" style="margin-top:0">Meta diária</div><input id="goalInput" class="search" type="number" step="0.01" value="${data.goal||''}" placeholder="Ex.: 1000"><button class="save" data-action="saveGoal">Salvar meta</button></div><div class="fin-card"><div class="section-title" style="margin-top:0">Deduplicação automática</div><p class="page-sub">O sistema verifica cortes, clientes, receitas, despesas e movimentações antes de salvar.</p><button class="save" data-action="dedupe">Verificar e eliminar duplicados</button></div><div class="fin-card"><div class="section-title" style="margin-top:0">Backup</div><button class="save" data-action="export">Exportar backup JSON</button><button class="save secondary" data-action="import">Importar backup JSON</button><input id="importFile" type="file" accept="application/json" hidden></div></div>`;}
-function pageAbout(){return `<div class="page">${header('Sobre o KINGS','Sistema Financeiro')}<div class="hero"><div class="hero-kicker">KINGS 9.2.3</div><h1 style="font-size:32px">Completo e funcional</h1><div class="accent">Offline • PWA • Dados salvos no aparelho</div><div class="section-title">✓ Entradas e saídas</div><div class="section-title">✓ Receitas e despesas</div><div class="section-title">✓ Clientes e cortes</div><div class="section-title">✓ Deduplicação automática</div></div></div>`;}
-const pages={home:pageHome,cash:pageCash,expenses:pageExpenses,clients:pageClients,receivables:pageReceivables,calendar:pageCalendar,reports:pageReports,categories:pageCategories,more:pageMore,settings:pageSettings,about:pageAbout};
+function pageMore(){
+  const items=[
+    ['categories','Categorias','Gerencie categorias de receitas e despesas'],
+    ['accounts','Contas','Gerencie suas contas e cartões'],
+    ['payments','Formas de Pagamento','Dinheiro, Pix, Cartão...'],
+    ['backup','Backup e Restauração','Faça backup dos seus dados'],
+    ['security','Segurança','Bloqueio do aplicativo'],
+    ['about','Sobre o KINGS',`Versão ${APP_VERSION}`]
+  ];
+  return `<div class="page more-page">${header('Mais','Configurações e ferramentas')}<div class="more-list">${items.map(([key,title,sub])=>`<button class="row setting-row" style="width:100%;text-align:left" data-nav="${key}">${iconBadge(menuIcon(key),key)}<div class="row-main"><b>${title}</b><small>${sub}</small></div><span class="setting-chevron">›</span></button>`).join('')}</div></div>`;
+}
+function pageSettings(){
+  return `<div class="page settings-page">${header('Configurações',`KINGS ${APP_VERSION}`)}
+    <div class="settings-grid">
+      <button class="setting-tile" data-nav="categories">${iconBadge('▣','categories')}<span><b>Categorias</b><small>Gerencie categorias</small></span><i>›</i></button>
+      <button class="setting-tile" data-nav="accounts">${iconBadge('▤','accounts')}<span><b>Contas</b><small>Contas e cartões</small></span><i>›</i></button>
+      <button class="setting-tile" data-nav="payments">${iconBadge('▣','payments')}<span><b>Formas de Pagamento</b><small>Dinheiro, Pix, Cartão...</small></span><i>›</i></button>
+      <button class="setting-tile" data-nav="backup">${iconBadge('↥','backup')}<span><b>Backup e Restauração</b><small>Proteja seus dados</small></span><i>›</i></button>
+      <button class="setting-tile" data-nav="security">${iconBadge('♙','security')}<span><b>Segurança</b><small>Bloqueio do aplicativo</small></span><i>›</i></button>
+      <button class="setting-tile" data-nav="about">${iconBadge('ⓘ','about')}<span><b>Sobre o KINGS</b><small>Versão ${APP_VERSION}</small></span><i>›</i></button>
+    </div>
+    <div class="fin-card"><div class="section-title" style="margin-top:0">Meta diária</div><input id="goalInput" class="search" type="number" step="0.01" value="${data.goal||''}" placeholder="Ex.: 1000"><button class="save" data-action="saveGoal">Salvar meta</button></div>
+    <div class="fin-card"><div class="section-title" style="margin-top:0">Deduplicação automática</div><p class="page-sub">O sistema verifica cortes, clientes, receitas, despesas e movimentações antes de salvar.</p><button class="save" data-action="dedupe">Verificar e eliminar duplicados</button></div>
+  </div>`;
+}
+function pageAccounts(){
+  return `<div class="page">${header('Contas','Gerencie suas contas e cartões')}<div class="settings-list">${data.accounts.map((x,i)=>`<div class="row setting-row">${iconBadge('▤','accounts')}<div class="row-main"><b>${esc(x)}</b><small>Conta disponível para lançamentos</small></div><button class="mini action-delete" data-action="deleteAccount" data-index="${i}">Excluir</button></div>`).join('')||'<div class="empty">Nenhuma conta cadastrada.</div>'}</div><button class="save" data-action="addAccount">＋ Adicionar conta</button></div>`;
+}
+function pagePayments(){
+  return `<div class="page">${header('Formas de Pagamento','Dinheiro, Pix, Cartão e outras formas')}<div class="settings-list">${data.paymentMethods.map((x,i)=>`<div class="row setting-row">${iconBadge('▣','payments')}<div class="row-main"><b>${esc(x)}</b><small>Forma de pagamento disponível</small></div><button class="mini action-delete" data-action="deletePayment" data-index="${i}">Excluir</button></div>`).join('')||'<div class="empty">Nenhuma forma cadastrada.</div>'}</div><button class="save" data-action="addPayment">＋ Adicionar forma</button></div>`;
+}
+function pageBackup(){
+  return `<div class="page">${header('Backup e Restauração','Faça backup dos seus dados')}<div class="fin-card"><div class="section-title" style="margin-top:0">Backup completo</div><p class="page-sub">Exporte cortes, clientes, receitas, despesas, movimentações, categorias e configurações.</p><button class="save" data-action="export">↥ Exportar backup JSON</button><button class="save secondary" data-action="import">↧ Restaurar backup JSON</button><input id="importFile" type="file" accept="application/json" hidden></div></div>`;
+}
+function pageSecurity(){
+  return `<div class="page">${header('Segurança','Proteja o acesso e a visualização dos seus dados')}<div class="fin-card security-card"><label class="security-option"><span>${iconBadge('♙','security')}<span><b>Bloqueio do aplicativo</b><small>Solicita confirmação ao abrir o KINGS</small></span></span><input type="checkbox" data-security="appLock" ${data.security.appLock?'checked':''}></label><label class="security-option"><span>${iconBadge('◉','security')}<span><b>Ocultar valores</b><small>Esconde valores financeiros nas telas</small></span></span><input type="checkbox" data-security="hideValues" ${data.security.hideValues?'checked':''}></label></div></div>`;
+}
+function pageAbout(){return `<div class="page">${header('Sobre o KINGS',`Versão ${APP_VERSION}`)}<div class="fin-card about-card">${iconBadge('ⓘ','about')}<h2>KINGS</h2><p class="page-sub">Sistema financeiro para controle de cortes, clientes, receitas, despesas e caixa.</p><span class="badge">${APP_VERSION}</span></div></div>`;}
+
+const pages={home:pageHome,cash:pageCash,expenses:pageExpenses,clients:pageClients,receivables:pageReceivables,calendar:pageCalendar,reports:pageReports,categories:pageCategories,more:pageMore,settings:pageSettings,accounts:pageAccounts,payments:pagePayments,backup:pageBackup,security:pageSecurity,about:pageAbout};
 
 function bindActions(){
   const s=document.getElementById('clientSearch');
@@ -305,7 +342,7 @@ function openExpense(){
 }
 function openRevenue(){
   const opts=data.clients.map(c=>`<option>${esc(c.name)}</option>`).join('');
-  openModal(`<h2>Nova Receita</h2><div class="field"><label>CLIENTE</label><input id="rClient" class="input" list="clientOptions" placeholder="Nome do cliente"><datalist id="clientOptions">${opts}</datalist></div>${field('DESCRIÇÃO','rDesc')}${field('VALOR','rValue','number','','step="0.01" min="0.01"')}${field('VENCIMENTO','rDate','date',today())}<div class="field"><label>STATUS</label><select id="rStatus" class="input"><option>A receber</option><option>Recebida</option></select></div><button class="save" id="modalSave">Salvar receita</button>`);
+  openModal(`<h2>Nova Receita</h2><div class="field"><label>CLIENTE</label><input id="rClient" class="input" list="clientOptions" placeholder="Nome do cliente"><datalist id="clientOptions">${opts}</datalist></div>${field('DESCRIÇÃO (OPCIONAL)','rDesc')}${field('VALOR','rValue','number','','step="0.01" min="0.01"')}${field('VENCIMENTO','rDate','date',today())}<div class="field"><label>STATUS</label><select id="rStatus" class="input"><option>A receber</option><option>Recebida</option></select></div><button class="save" id="modalSave">Salvar receita</button>`);
   document.getElementById('modalSave').onclick=()=>{
     if(!requireValue('rClient','o cliente')||!requireValue('rValue','o valor')||!requireValue('rDate','a data'))return;
     const r={id:uid('r'),client:document.getElementById('rClient').value.trim(),desc:document.getElementById('rDesc').value.trim()||'Receita',value:num(document.getElementById('rValue').value),date:document.getElementById('rDate').value,status:document.getElementById('rStatus').value};
@@ -340,7 +377,10 @@ function remove(type,id){
 }
 function countAll(d){return ['cuts','clients','revenues','expenses','movements'].reduce((a,k)=>a+(d[k]?.length||0),0);}
 function brMonth(v){const [y,m]=String(v).slice(0,7).split('-');return `${m}/${y}`;}
-function iconFor(k){return ({Aluguel:'⌂',Mercadorias:'🛒','Contas Fixas':'●',Cartão:'▣',Materiais:'✂','Folha de Pagamento':'$'}[k]||'◆');}
+function iconFor(k){return ({Aluguel:'⌂',Mercadorias:'🛒','Contas Fixas':'💡',Cartão:'▣',Materiais:'✂','Folha de Pagamento':'$','Outros':'◆'}[k]||'◆');}
+function menuIcon(k){return ({categories:'▣',accounts:'▤',payments:'▣',backup:'↥',security:'♙',about:'ⓘ',calendar:'▦',reports:'⌁',settings:'⚙'}[k]||'◆');}
+function iconBadge(icon,cls=''){return `<span class="setting-icon ${cls}">${icon}</span>`;}
+function addSimpleItem(type,title){if(type==='account') data.accounts.push(title); else data.paymentMethods.push(title); persist(); render();}
 function download(name,text,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
 function importBackup(file){const reader=new FileReader();reader.onload=()=>{try{const incoming=ensureShape(JSON.parse(reader.result));data=incoming;persist();alert('Backup restaurado com sucesso.');render();}catch(e){alert('Arquivo de backup inválido.');}};reader.readAsText(file);}
 
@@ -368,12 +408,16 @@ document.addEventListener('click', e=>{
   else if(act==='deleteMovement'&&confirm('Excluir esta movimentação?'))remove('movements',a.dataset.id);
   else if(act==='expenseFilter'){expenseFilter=a.dataset.filter;render();}
   else if(act==='revenueFilter'){revenueFilter=a.dataset.filter;render();}
+  else if(act==='addAccount'){const name=prompt('Nome da conta ou cartão:');if(name&&name.trim())addSimpleItem('account',name.trim());}
+  else if(act==='deleteAccount'){const i=Number(a.dataset.index);if(confirm('Excluir esta conta?')){data.accounts.splice(i,1);persist();render();}}
+  else if(act==='addPayment'){const name=prompt('Nome da forma de pagamento:');if(name&&name.trim())addSimpleItem('payment',name.trim());}
+  else if(act==='deletePayment'){const i=Number(a.dataset.index);if(confirm('Excluir esta forma de pagamento?')){data.paymentMethods.splice(i,1);persist();render();}}
   else if(act==='saveGoal'){data.goal=num(document.getElementById('goalInput')?.value);persist();alert('Meta salva.');render();}
   else if(act==='dedupe'){const before=countAll(data);data=dedupeAll(data);persist();alert(`${before-countAll(data)} duplicado(s) removido(s).`);render();}
-  else if(act==='export'){download(`kings-9.2.3-backup-${today()}.json`,JSON.stringify(data,null,2),'application/json');}
+  else if(act==='export'){download(`kings-9.2.6-backup-${today()}.json`,JSON.stringify(data,null,2),'application/json');}
   else if(act==='import')document.getElementById('importFile')?.click();
 });
-document.addEventListener('change',e=>{if(e.target.id==='importFile'&&e.target.files[0])importBackup(e.target.files[0]);});
+document.addEventListener('change',e=>{if(e.target.id==='importFile'&&e.target.files[0])importBackup(e.target.files[0]); if(e.target.dataset.security){data.security[e.target.dataset.security]=e.target.checked;persist();render();}});
 document.getElementById('modal')?.addEventListener('click',e=>{if(e.target.id==='modal')closeModal();});
 render();
-if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=9.2.3').catch(()=>{});
+if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=9.2.6').catch(()=>{});
