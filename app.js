@@ -1,7 +1,7 @@
 const KEY = 'kings92_data_v4';
 const OLD_KEYS = ['kings92_data_v2','kings92_data_v1','kings92_data','kings_data_v2','kings_data'];
 const LEGACY_CUTS='kings_cuts_v3', LEGACY_EXPENSES='kings_expenses_v3', LEGACY_CFG='kings_cfg_v3';
-const APP_VERSION='9.2.6';
+const APP_VERSION='9.2.7';
 
 const today = () => { const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
 const monthKey = d => String(d || '').slice(0,7);
@@ -20,7 +20,7 @@ const seed = {
   expenses: [],
   movements: [],
   goal: 0,
-  categories: ['Aluguel','Mercadorias','Contas Fixas','Cartão','Materiais','Folha de Pagamento','Outros'],
+  categories: ['Aluguel','Mercadorias','Contas Fixas','Internet','Cartão','Materiais','Folha de Pagamento','Água','Energia','Transporte','Marketing','Impostos','Manutenção','Limpeza','Outros'],
   accounts: [],
   paymentMethods: [],
   security: {appLock:false, hideValues:false}
@@ -35,6 +35,7 @@ function ensureShape(d){
   d = d && typeof d === 'object' ? d : clone(seed);
   ['cuts','clients','revenues','expenses','movements'].forEach(k=>{ if(!Array.isArray(d[k])) d[k]=[]; });
   if(!Array.isArray(d.categories)) d.categories = clone(seed.categories);
+  for(const c of seed.categories) if(!d.categories.some(x=>norm(x)===norm(c))) d.categories.push(c);
   if(!Array.isArray(d.accounts)) d.accounts = clone(seed.accounts);
   if(!Array.isArray(d.paymentMethods)) d.paymentMethods = clone(seed.paymentMethods);
   if(!d.security || typeof d.security!=='object') d.security = clone(seed.security);
@@ -185,7 +186,7 @@ function pageExpenses(){
   const filtered=data.expenses.filter(e=>expenseFilter==='Todas'||e.status===expenseFilter||(expenseFilter==='Vencidas'&&e.status==='A vencer'&&e.date<today()));
   return `<div class="page">${header('Despesas','Gerencie suas despesas')}<div class="filter">${['Todas','A vencer','Vencidas','Pagas'].map(f=>`<button class="${expenseFilter===f?'active':''}" data-action="expenseFilter" data-filter="${f}">${f}</button>`).join('')}</div>${filtered.map(expenseRow).join('')||`<div class="empty">Nenhuma despesa encontrada.</div>`}<button class="fab" data-action="addExpense">＋</button></div>`;
 }
-function expenseRow(e){return `<div class="row"><div class="row-icon">${iconFor(e.category)}</div><div class="row-main"><b>${esc(e.desc)}</b><small>Venc: ${brDate(e.date)} · ${esc(e.category)}${e.totalInstallments>1?` · Parcela ${e.installment}/${e.totalInstallments}`:''}</small><div class="actions"><button class="mini action-paid ${e.status==='Pago'?'green':''}" data-action="toggleExpense" data-id="${e.id}">${e.status==='Pago'?'Pago':'Marcar como pago'}</button><button class="mini action-delete" data-action="deleteExpense" data-id="${e.id}">Excluir</button></div></div><div style="text-align:right"><div class="row-price red">${money(e.value)}</div><small class="${e.status==='Pago'?'green':'gold'}">${e.status}</small></div></div>`;}
+function expenseRow(e){return `<div class="row"><div class="row-icon expense-row-icon">${expenseIcon(e.category)}</div><div class="row-main"><b>${esc(e.desc)}</b><small>Venc: ${brDate(e.date)} · ${esc(e.category)}${e.totalInstallments>1?` · Parcela ${e.installment}/${e.totalInstallments}`:''}</small><div class="actions"><button class="mini action-paid ${e.status==='Pago'?'green':''}" data-action="toggleExpense" data-id="${e.id}">${e.status==='Pago'?'Pago':'Marcar como pago'}</button><button class="mini action-delete" data-action="deleteExpense" data-id="${e.id}">Excluir</button></div></div><div style="text-align:right"><div class="row-price red">${money(e.value)}</div><small class="${e.status==='Pago'?'green':'gold'}">${e.status}</small></div></div>`;}
 
 function pageReceivables(){
   const filtered=data.revenues.filter(r=>revenueFilter==='Todas'||(revenueFilter==='A receber'&&r.status!=='Recebida')||(revenueFilter==='Recebidas'&&r.status==='Recebida'));
@@ -232,9 +233,9 @@ function pageCalendar(){
 function pageReports(){
   const t=totals(), margin=t.incoming?((t.profit/t.incoming)*100):0;
   const cats={}; data.expenses.forEach(e=>cats[e.category]=(cats[e.category]||0)+num(e.value));
-  return `<div class="page">${header('Relatórios','Análises e gráficos')}<div class="metric-row"><div class="metric"><span>Entradas</span><b class="green">${money(t.incoming)}</b></div><div class="metric"><span>Saídas</span><b class="red">${money(t.outgoing)}</b></div><div class="metric"><span>Lucro</span><b class="blue">${money(t.profit)}</b></div><div class="metric"><span>Margem</span><b class="gold">${margin.toFixed(2).replace('.',',')}%</b></div></div><div class="fin-card"><b>Despesas por categoria</b>${Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="row"><div class="row-main"><b>${esc(k)}</b></div><div class="row-price red">${money(v)}</div></div>`).join('')||'<div class="empty">Sem despesas.</div>'}</div></div>`;
+  return `<div class="page">${header('Relatórios','Análises e gráficos')}<div class="metric-row"><div class="metric"><span>Entradas</span><b class="green">${money(t.incoming)}</b></div><div class="metric"><span>Saídas</span><b class="red">${money(t.outgoing)}</b></div><div class="metric"><span>Lucro</span><b class="blue">${money(t.profit)}</b></div><div class="metric"><span>Margem</span><b class="gold">${margin.toFixed(2).replace('.',',')}%</b></div></div><div class="fin-card"><b>Despesas por categoria</b>${Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="row"><div class="row-icon">${expenseIcon(k)}</div><div class="row-main"><b>${esc(k)}</b></div><div class="row-price red">${money(v)}</div></div>`).join('')||'<div class="empty">Sem despesas.</div>'}</div></div>`;
 }
-function pageCategories(){const map={};data.expenses.forEach(e=>map[e.category]=(map[e.category]||0)+num(e.value));return `<div class="page">${header('Despesas por Categoria',`Mês ${brMonth(today())}`)}${Object.entries(map).map(([k,v])=>`<div class="row"><div class="row-icon">${iconFor(k)}</div><div class="row-main"><b>${esc(k)}</b><small>Despesas registradas</small></div><div class="row-price red">${money(v)}</div></div>`).join('')||'<div class="empty">Sem despesas.</div>'}</div>`;}
+function pageCategories(){const map={};data.expenses.forEach(e=>map[e.category]=(map[e.category]||0)+num(e.value));return `<div class="page">${header('Despesas por Categoria',`Mês ${brMonth(today())}`)}${Object.entries(map).map(([k,v])=>`<div class="row"><div class="row-icon expense-row-icon">${expenseIcon(k)}</div><div class="row-main"><b>${esc(k)}</b><small>Despesas registradas</small></div><div class="row-price red">${money(v)}</div></div>`).join('')||'<div class="empty">Sem despesas.</div>'}</div>`;}
 function pageMore(){
   const items=[
     ['categories','Categorias','Gerencie categorias de receitas e despesas'],
@@ -377,7 +378,14 @@ function remove(type,id){
 }
 function countAll(d){return ['cuts','clients','revenues','expenses','movements'].reduce((a,k)=>a+(d[k]?.length||0),0);}
 function brMonth(v){const [y,m]=String(v).slice(0,7).split('-');return `${m}/${y}`;}
-function iconFor(k){return ({Aluguel:'⌂',Mercadorias:'🛒','Contas Fixas':'💡',Cartão:'▣',Materiais:'✂','Folha de Pagamento':'$','Outros':'◆'}[k]||'◆');}
+function expenseIcon(k){
+  const map={
+    Aluguel:['⌂','house'],Mercadorias:['🛒','cart'],'Contas Fixas':['💡','light'],Internet:['📶','wifi'],Cartão:['▣','card'],Materiais:['✂','scissors'],'Folha de Pagamento':['$','salary'],Água:['💧','water'],Energia:['⚡','energy'],Transporte:['🚗','car'],Marketing:['📣','marketing'],Impostos:['▤','tax'],Manutenção:['🔧','tools'],Limpeza:['🧹','clean'],'Outros':['◆','other']
+  };
+  const [glyph,cls]=map[k]||map.Outros;
+  return `<span class="expense-symbol ${cls}">${glyph}</span>`;
+}
+function iconFor(k){return expenseIcon(k);}
 function menuIcon(k){return ({categories:'▣',accounts:'▤',payments:'▣',backup:'↥',security:'♙',about:'ⓘ',calendar:'▦',reports:'⌁',settings:'⚙'}[k]||'◆');}
 function iconBadge(icon,cls=''){return `<span class="setting-icon ${cls}">${icon}</span>`;}
 function addSimpleItem(type,title){if(type==='account') data.accounts.push(title); else data.paymentMethods.push(title); persist(); render();}
@@ -414,10 +422,10 @@ document.addEventListener('click', e=>{
   else if(act==='deletePayment'){const i=Number(a.dataset.index);if(confirm('Excluir esta forma de pagamento?')){data.paymentMethods.splice(i,1);persist();render();}}
   else if(act==='saveGoal'){data.goal=num(document.getElementById('goalInput')?.value);persist();alert('Meta salva.');render();}
   else if(act==='dedupe'){const before=countAll(data);data=dedupeAll(data);persist();alert(`${before-countAll(data)} duplicado(s) removido(s).`);render();}
-  else if(act==='export'){download(`kings-9.2.6-backup-${today()}.json`,JSON.stringify(data,null,2),'application/json');}
+  else if(act==='export'){download(`kings-9.2.7-backup-${today()}.json`,JSON.stringify(data,null,2),'application/json');}
   else if(act==='import')document.getElementById('importFile')?.click();
 });
 document.addEventListener('change',e=>{if(e.target.id==='importFile'&&e.target.files[0])importBackup(e.target.files[0]); if(e.target.dataset.security){data.security[e.target.dataset.security]=e.target.checked;persist();render();}});
 document.getElementById('modal')?.addEventListener('click',e=>{if(e.target.id==='modal')closeModal();});
 render();
-if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=9.2.6').catch(()=>{});
+if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=9.2.7').catch(()=>{});

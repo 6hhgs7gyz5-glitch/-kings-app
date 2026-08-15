@@ -60,3 +60,31 @@ button{cursor:pointer}
 
 /* KINGS 9.2.4 — ícones e menu de configurações inspirado na referência */
 .setting-row{gap:10px;min-height:64px}.setting-icon{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;flex:0 0 auto;font-size:17px;color:#fff;background:#175ea8;border:1px solid #2477c8;box-shadow:inset 0 0 0 1px #ffffff12}.setting-icon.categories{background:#1b5da8}.setting-icon.accounts{background:#1f5e9f}.setting-icon.payments{background:#9a6a24}.setting-icon.backup{background:#179448}.setting-icon.security{background:#185ca5}.setting-icon.about{background:#1c5da4}.setting-chevron{font-size:25px;color:#8d9498;margin-left:auto}.more-page .more-list{display:grid;gap:1px;background:#0b0d0e;border:1px solid #25292c;border-radius:12px;overflow:hidden}.more-page .more-list .row{margin:0;border:0;border-bottom:1px solid #25292c;border-radius:0;background:#151719;padding:11px 10px}.more-page .more-list .row:last-child{border-bottom:0}.more-page .row-main b{font-size:12px}.more-page .row-main small{font-size:9px}.settings-grid{display:grid;gap:8px;margin-top:12px}.setting-tile{width:100%;display:flex;align-items:center;gap:10px;text-align:left;border:1px solid #2a2f32;background:#151719;color:#fff;border-radius:13px;padding:12px}.setting-tile span:not(.setting-icon){display:flex;flex-direction:column;gap:3px;min-width:0}.setting-tile b{font-size:13px}.setting-tile small{color:#8f969a;font-size:9px}.setting-tile i{font-style:normal;font-size:23px;color:#8d9498;margin-left:auto}.settings-list{display:grid;gap:2px}.settings-list .row{margin:0;border-radius:12px}.secondary{background:#202326!important;color:#ddd!important;border:1px solid #3b4145!important}.security-card{padding:0;overflow:hidden}.security-option{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px;border-bottom:1px solid #292d30}.security-option:last-child{border-bottom:0}.security-option>span{display:flex;align-items:center;gap:10px}.security-option>span>span{display:flex;flex-direction:column;gap:3px}.security-option b{font-size:13px}.security-option small{color:#8f969a;font-size:9px}.security-option input{width:22px;height:22px;accent-color:var(--green)}.about-card{text-align:center;padding:25px}.about-card .setting-icon{margin:auto;width:48px;height:48px;border-radius:14px;font-size:24px}.about-card h2{margin:10px 0 4px}.action-paid,.action-delete,.action-primary{display:inline-flex;align-items:center;gap:5px}.action-paid:before{content:'✓';}.action-delete:before{content:'×';}.action-primary:before{content:'＋';}
+/* KINGS 9.2.7 — logo sem moldura, cabeçalho abaixo da área do sistema e ícones de categorias */
+.topbar{
+  height:auto;
+  min-height:96px;
+  padding:calc(env(safe-area-inset-top) + 12px) 18px 10px;
+}
+.brand{min-width:0}
+.brand-mark{
+  width:68px;
+  height:68px;
+  border:0;
+  border-radius:0;
+  padding:0;
+  background:transparent;
+  overflow:visible;
+  flex:0 0 auto;
+}
+.brand-mark img{width:100%;height:100%;object-fit:contain;display:block}
+.brand-name{font-size:25px}
+.brand-sub{font-size:7px;letter-spacing:2.8px}
+.expense-symbol{display:inline-grid;place-items:center;width:100%;height:100%;font-size:21px;line-height:1;filter:saturate(1.08)}
+.expense-symbol.house{color:#d6d6ff}.expense-symbol.cart{color:#6fb0ff}.expense-symbol.light{color:#8df18d}.expense-symbol.wifi{color:#ffb52e}.expense-symbol.card{color:#ff6d73}.expense-symbol.scissors{color:#b18cff}.expense-symbol.salary{color:#ffd84a}.expense-symbol.water{color:#62c9ff}.expense-symbol.energy{color:#ffe45b}.expense-symbol.car{color:#78b7ff}.expense-symbol.marketing{color:#ff8d8d}.expense-symbol.tax{color:#8fb8ff}.expense-symbol.tools{color:#b4b9c0}.expense-symbol.clean{color:#8ee7d2}.expense-symbol.other{color:#b7b7b7}
+.row-icon.expense-row-icon{background:#1d2325;overflow:hidden}
+@media(max-width:480px){
+  .topbar{min-height:94px;padding:calc(env(safe-area-inset-top) + 10px) 14px 9px;grid-template-columns:48px 1fr 48px}
+  .brand-mark{width:64px;height:64px}
+  .brand-name{font-size:23px}
+}
