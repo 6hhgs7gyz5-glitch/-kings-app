@@ -1,7 +1,7 @@
 const KEY = 'kings92_data_v4';
 const OLD_KEYS = ['kings92_data_v2','kings92_data_v1','kings92_data','kings_data_v2','kings_data'];
 const LEGACY_CUTS='kings_cuts_v3', LEGACY_EXPENSES='kings_expenses_v3', LEGACY_CFG='kings_cfg_v3';
-const APP_VERSION='9.2.7';
+const APP_VERSION='9.2.8';
 
 const today = () => { const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
 const monthKey = d => String(d || '').slice(0,7);
@@ -11,7 +11,22 @@ const money = v => new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL
 const uid = p => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,8)}`;
 const esc = v => String(v ?? '').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const brDate = v => { const [y,m,d]=String(v||'').slice(0,10).split('-'); return y&&m&&d?`${d}/${m}/${y}`:String(v||''); };
-const num = v => Math.max(0, Number(String(v ?? '').replace(',','.')) || 0);
+const num = v => {
+  if (typeof v === 'number') return Number.isFinite(v) ? Math.max(0, v) : 0;
+  const raw = String(v ?? '').trim().replace(/R\$\s?/gi,'').replace(/\s/g,'');
+  if (!raw) return 0;
+  // Aceita 30, 30.50, 30,50 e valores digitados no padrão brasileiro.
+  const normalized = raw.includes(',') && raw.includes('.')
+    ? raw.replace(/\./g,'').replace(',','.')
+    : raw.replace(',','.');
+  const n = Number(normalized);
+  return Number.isFinite(n) ? Math.max(0, n) : 0;
+};
+const amountFromInput = el => {
+  if (!el) return 0;
+  const n = typeof el.valueAsNumber === 'number' && Number.isFinite(el.valueAsNumber) ? el.valueAsNumber : num(el.value);
+  return Math.round(n * 100) / 100;
+};
 
 const seed = {
   cuts: [],
@@ -290,11 +305,16 @@ function requireValue(id,label){const el=document.getElementById(id);if(!el||!St
 function openEntry(type){
   const title=type==='in'?'Nova Entrada':'Nova Saída';
   const defaultDesc=type==='in'?'Entrada rápida':'Saída rápida';
-  openModal(`<h2>${title}</h2>${field('DESCRIÇÃO (OPCIONAL)','fDesc','text','')}${field('VALOR','fValue','number','','step="0.01" min="0.01"')}${field('DATA','fDate','date',today())}<button class="save" id="modalSave">Salvar</button>`);
+  openModal(`<h2>${title}</h2>${field('DESCRIÇÃO (OPCIONAL)','fDesc','text','')}${field('VALOR','fValue','number','','step="0.01" min="0.01" inputmode="decimal"')}${field('DATA','fDate','date',today())}<button class="save" id="modalSave">Salvar</button>`);
   document.getElementById('modalSave').onclick=()=>{
     if(!requireValue('fValue','o valor')||!requireValue('fDate','a data'))return;
     const desc=document.getElementById('fDesc').value.trim()||defaultDesc;
-    data.movements.push({id:uid('m'),type,desc,value:num(document.getElementById('fValue').value),date:document.getElementById('fDate').value});
+    const value = amountFromInput(document.getElementById('fValue'));
+    if(value <= 0){ alert('Informe um valor maior que R$ 0,00.'); document.getElementById('fValue')?.focus(); return; }
+    const saveBtn=document.getElementById('modalSave');
+    if(saveBtn.dataset.saving==='1') return;
+    saveBtn.dataset.saving='1'; saveBtn.disabled=true;
+    data.movements.push({id:uid('m'),type,desc,value,date:document.getElementById('fDate').value});
     persist();closeModal();render();
   };
 }
@@ -422,10 +442,10 @@ document.addEventListener('click', e=>{
   else if(act==='deletePayment'){const i=Number(a.dataset.index);if(confirm('Excluir esta forma de pagamento?')){data.paymentMethods.splice(i,1);persist();render();}}
   else if(act==='saveGoal'){data.goal=num(document.getElementById('goalInput')?.value);persist();alert('Meta salva.');render();}
   else if(act==='dedupe'){const before=countAll(data);data=dedupeAll(data);persist();alert(`${before-countAll(data)} duplicado(s) removido(s).`);render();}
-  else if(act==='export'){download(`kings-9.2.7-backup-${today()}.json`,JSON.stringify(data,null,2),'application/json');}
+  else if(act==='export'){download(`kings-9.2.8-backup-${today()}.json`,JSON.stringify(data,null,2),'application/json');}
   else if(act==='import')document.getElementById('importFile')?.click();
 });
 document.addEventListener('change',e=>{if(e.target.id==='importFile'&&e.target.files[0])importBackup(e.target.files[0]); if(e.target.dataset.security){data.security[e.target.dataset.security]=e.target.checked;persist();render();}});
 document.getElementById('modal')?.addEventListener('click',e=>{if(e.target.id==='modal')closeModal();});
 render();
-if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=9.2.7').catch(()=>{});
+if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=9.2.8').catch(()=>{});
