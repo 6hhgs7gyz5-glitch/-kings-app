@@ -1,7 +1,7 @@
 const KEY = 'kings92_data_v4';
 const OLD_KEYS = ['kings92_data_v2','kings92_data_v1','kings92_data','kings_data_v2','kings_data'];
 const LEGACY_CUTS='kings_cuts_v3', LEGACY_EXPENSES='kings_expenses_v3', LEGACY_CFG='kings_cfg_v3';
-const APP_VERSION='9.2.10';
+const APP_VERSION='9.2.11';
 
 const today = () => { const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
 const monthKey = d => String(d || '').slice(0,7);
@@ -183,27 +183,31 @@ function monthTotals(){
   return {incoming,outgoing,profit:incoming-outgoing};
 }
 function pageHome(){
-  const t=totals(), mt=monthTotals(), goal=num(data.goal), pct=goal?Math.min(100,todayRevenue()/goal*100):0;
+  const t=totals(), mt=monthTotals();
   return `<div class="page home-page">
-    <div class="home-heading"><div><h1>Central Financeira</h1><div>Hoje, ${brDate(today())} · <button class="calendar-link" data-nav="calendar">Ver calendário</button></div></div></div>
+    <div class="home-heading"><div><h1>Central Financeira</h1><div><span class="date-symbol">▣</span> Hoje, ${brDate(today())} <button class="calendar-link" data-nav="calendar">Ver calendário ›</button></div></div></div>
     <div class="home-metrics">
-      <div class="home-metric in"><span>Entradas</span><b>${money(t.incoming)}</b></div>
-      <div class="home-metric out"><span>Saídas</span><b>${money(t.outgoing)}</b></div>
-      <div class="home-metric recv"><span>A Receber</span><b>${money(t.receivable)}</b></div>
-      <div class="home-metric pay"><span>A Pagar</span><b>${money(t.payable)}</b></div>
+      <div class="home-metric in"><span class="metric-icon">↑</span><div><small>Entradas</small><b>${money(t.incoming)}</b></div></div>
+      <div class="home-metric out"><span class="metric-icon">↓</span><div><small>Saídas</small><b>${money(t.outgoing)}</b></div></div>
+      <div class="home-metric recv"><span class="metric-icon">▣</span><div><small>A Receber</small><b>${money(t.receivable)}</b></div></div>
+      <div class="home-metric pay"><span class="metric-icon">▣</span><div><small>A Pagar</small><b>${money(t.payable)}</b></div></div>
     </div>
-    <section class="home-balance"><div class="balance-label">Saldo Disponível</div><div class="balance-value ${t.balance>=0?'green':'red'}">${money(t.balance)}</div><div class="balance-line"></div><div class="profit-label">Lucro do Mês</div><div class="profit-row"><b class="green">${money(mt.profit)}</b><button data-nav="reports">↗</button></div></section>
+    <section class="home-balance">
+      <div class="balance-label">Saldo Disponível</div><div class="balance-value ${t.balance>=0?'green':'red'}">${money(t.balance)}</div>
+      <div class="balance-crown">♛</div><div class="balance-line"></div>
+      <div class="profit-label">Lucro do Mês</div><div class="profit-row"><b class="green">${money(mt.profit)}</b><div class="profit-chart"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><button data-nav="reports">↗</button></div>
+    </section>
     <div class="home-quick-title">Atalhos Rápidos</div>
     <div class="home-quick">
       <button class="home-q in" data-action="quickIn"><span>＋</span>Entrada</button>
       <button class="home-q out" data-action="quickOut"><span>−</span>Saída</button>
       <button class="home-q client" data-action="addClient"><span>♙</span>Cliente</button>
     </div>
-    <div class="home-summary-title"><span>Resumo do Mês</span><button data-nav="reports">Detalhes</button></div>
+    <div class="home-summary-title"><span>Resumo do Mês</span><button data-nav="reports">Detalhes ›</button></div>
     <div class="home-summary">
-      <div><span>Entradas</span><b class="green">${money(mt.incoming)}</b></div>
-      <div><span>Saídas</span><b class="red">${money(mt.outgoing)}</b></div>
-      <div><span>Lucro</span><b class="green">${money(mt.profit)}</b></div>
+      <div><span>Entradas</span><b class="green">${money(mt.incoming)}</b><i></i></div>
+      <div><span>Saídas</span><b class="red">${money(mt.outgoing)}</b><i></i></div>
+      <div><span>Lucro</span><b class="green">${money(mt.profit)}</b><i></i></div>
     </div>
     <div class="section-title home-recent-title">Movimentações recentes</div>${movementRows(data.movements.slice().reverse().slice(0,8))}
   </div>`;
@@ -222,7 +226,7 @@ function pageReceivables(){
   const filtered=data.revenues.filter(r=>revenueFilter==='Todas'||(revenueFilter==='A receber'&&r.status!=='Recebida')||(revenueFilter==='Recebidas'&&r.status==='Recebida'));
   return `<div class="page">${header('Receitas','Contas a receber')}<div class="filter">${['Todas','A receber','Recebidas'].map(f=>`<button class="${revenueFilter===f?'active':''}" data-action="revenueFilter" data-filter="${f}">${f}</button>`).join('')}</div>${filtered.map(revenueRow).join('')||`<div class="empty">Nenhuma receita encontrada.</div>`}<button class="fab" data-action="addRevenue">＋</button></div>`;
 }
-function revenueRow(r){return `<div class="row"><div class="row-icon">♙</div><div class="row-main"><b>${esc(r.client)}</b><small>${brDate(r.date)}<br>${esc(r.desc)}</small><div class="actions"><button class="mini action-paid ${r.status==='Recebida'?'green':''}" data-action="toggleRevenue" data-id="${r.id}">${r.status==='Recebida'?'Recebida':'Marcar como recebida'}</button><button class="mini action-delete" data-action="deleteRevenue" data-id="${r.id}">Excluir</button></div></div><div style="text-align:right"><div class="row-price ${r.status==='Recebida'?'green':'red'}">${money(r.value)}</div><small class="${r.status==='Recebida'?'green':'gold'}">${r.status}</small></div></div>`;}
+function revenueRow(r){return `<div class="row finance-row revenue-row"><div class="row-icon revenue-icon">▣</div><div class="row-main"><b>${esc(r.client)}</b><small>${brDate(r.date)}<br>${esc(r.desc)}</small><div class="actions"><button class="mini action-paid ${r.status==='Recebida'?'green':''}" data-action="toggleRevenue" data-id="${r.id}">${r.status==='Recebida'?'Recebida':'Marcar como recebida'}</button><button class="mini action-delete" data-action="deleteRevenue" data-id="${r.id}">Excluir</button></div></div><div style="text-align:right"><div class="row-price ${r.status==='Recebida'?'green':'red'}">${money(r.value)}</div><small class="${r.status==='Recebida'?'green':'gold'}">${r.status}</small></div></div>`;}
 
 function pageClients(){return `<div class="page">${header('Clientes','Seus clientes cadastrados')}<input class="search" id="clientSearch" placeholder="⌕  Buscar cliente..."><div id="clientList">${clientRows(data.clients)}</div><button class="fab" data-action="addClient">＋</button></div>`;}
 function clientStats(c){
@@ -243,7 +247,7 @@ function clientStats(c){
   const open=openRev+openLegacyCuts;
   return {spent,open};
 }
-function clientRows(arr){return arr.map(c=>{const s=clientStats(c);return `<div class="row"><div class="row-icon">♙</div><div class="row-main"><b>${esc(c.name)}</b><small>${esc(c.phone||'')}<br>Total gasto: ${money(s.spent)}</small><div class="actions"><button class="mini action-primary" data-action="addCut" data-client="${esc(c.name)}">Novo corte</button><button class="mini action-delete" data-action="deleteClient" data-id="${c.id}">Excluir</button></div></div><div style="text-align:right"><small class="${s.open?'red':'green'}">${s.open?'Em aberto':'✓'}</small><div class="row-price ${s.open?'red':'green'}">${money(s.open)}</div></div></div>`;}).join('')||`<div class="empty">Nenhum cliente cadastrado.</div>`;}
+function clientRows(arr){return arr.map(c=>{const s=clientStats(c);return `<div class="row finance-row client-row"><div class="row-icon client-icon">♙</div><div class="row-main"><b>${esc(c.name)}</b><small>${esc(c.phone||'')}<br>Total gasto: ${money(s.spent)}</small><div class="actions"><button class="mini action-primary" data-action="addCut" data-client="${esc(c.name)}">Novo corte</button><button class="mini action-delete" data-action="deleteClient" data-id="${c.id}">Excluir</button></div></div><div style="text-align:right"><small class="${s.open?'red':'green'}">${s.open?'Em aberto':'✓'}</small><div class="row-price ${s.open?'red':'green'}">${money(s.open)}</div></div></div>`;}).join('')||`<div class="empty">Nenhum cliente cadastrado.</div>`;}
 
 function pageCalendar(){
   const now=new Date(); const y=now.getFullYear(),m=now.getMonth(); const first=new Date(y,m,1).getDay(); const days=new Date(y,m+1,0).getDate();
@@ -258,14 +262,14 @@ function pageCalendar(){
     const cls=ds===today()?' today':'';
     cells+=`<div class="cal-cell${cls}"><b>${d}</b>${ins?`<span class="pill in">Recebido ${money(ins)}</span>`:''}${outs?`<span class="pill out">Saída ${money(outs)}</span>`:''}${payable?`<span class="pill pay">A pagar ${money(payable)}</span>`:''}${receivable?`<span class="pill recv">A receber ${money(receivable)}</span>`:''}</div>`;
   }
-  return `<div class="page">${header('Calendário','Recebidos, saídas, contas a pagar e a receber')}<div class="calendar-legend"><span><i class="dot in"></i>Recebidos</span><span><i class="dot out"></i>Saídas</span><span><i class="dot pay"></i>A pagar</span><span><i class="dot recv"></i>A receber</span></div><div class="calendar">${cells}</div></div>`;
+  return `<div class="page modern-page calendar-page">${header('Calendário','Recebidos, saídas, contas a pagar e a receber')}<div class="calendar-legend"><span><i class="dot in"></i>Recebidos</span><span><i class="dot out"></i>Saídas</span><span><i class="dot pay"></i>A pagar</span><span><i class="dot recv"></i>A receber</span></div><div class="calendar">${cells}</div></div>`;
 }
 function pageReports(){
   const t=totals(), margin=t.incoming?((t.profit/t.incoming)*100):0;
   const cats={}; data.expenses.forEach(e=>cats[e.category]=(cats[e.category]||0)+num(e.value));
-  return `<div class="page">${header('Relatórios','Análises e gráficos')}<div class="metric-row"><div class="metric"><span>Entradas</span><b class="green">${money(t.incoming)}</b></div><div class="metric"><span>Saídas</span><b class="red">${money(t.outgoing)}</b></div><div class="metric"><span>Lucro</span><b class="blue">${money(t.profit)}</b></div><div class="metric"><span>Margem</span><b class="gold">${margin.toFixed(2).replace('.',',')}%</b></div></div><div class="fin-card"><b>Despesas por categoria</b>${Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="row"><div class="row-icon">${expenseIcon(k)}</div><div class="row-main"><b>${esc(k)}</b></div><div class="row-price red">${money(v)}</div></div>`).join('')||'<div class="empty">Sem despesas.</div>'}</div></div>`;
+  return `<div class="page modern-page reports-page">${header('Relatórios','Análises e gráficos')}<div class="metric-row"><div class="metric"><span>Entradas</span><b class="green">${money(t.incoming)}</b></div><div class="metric"><span>Saídas</span><b class="red">${money(t.outgoing)}</b></div><div class="metric"><span>Lucro</span><b class="blue">${money(t.profit)}</b></div><div class="metric"><span>Margem</span><b class="gold">${margin.toFixed(2).replace('.',',')}%</b></div></div><div class="fin-card"><b>Despesas por categoria</b>${Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="row"><div class="row-icon">${expenseIcon(k)}</div><div class="row-main"><b>${esc(k)}</b></div><div class="row-price red">${money(v)}</div></div>`).join('')||'<div class="empty">Sem despesas.</div>'}</div></div>`;
 }
-function pageCategories(){const map={};data.expenses.forEach(e=>map[e.category]=(map[e.category]||0)+num(e.value));return `<div class="page">${header('Despesas por Categoria',`Mês ${brMonth(today())}`)}${Object.entries(map).map(([k,v])=>`<div class="row"><div class="row-icon expense-row-icon">${expenseIcon(k)}</div><div class="row-main"><b>${esc(k)}</b><small>Despesas registradas</small></div><div class="row-price red">${money(v)}</div></div>`).join('')||'<div class="empty">Sem despesas.</div>'}</div>`;}
+function pageCategories(){const map={};data.expenses.forEach(e=>map[e.category]=(map[e.category]||0)+num(e.value));return `<div class="page modern-page categories-page">${header('Despesas por Categoria',`Mês ${brMonth(today())}`)}${Object.entries(map).map(([k,v])=>`<div class="row"><div class="row-icon expense-row-icon">${expenseIcon(k)}</div><div class="row-main"><b>${esc(k)}</b><small>Despesas registradas</small></div><div class="row-price red">${money(v)}</div></div>`).join('')||'<div class="empty">Sem despesas.</div>'}</div>`;}
 function pageMore(){
   const items=[
     ['categories','Categorias','Gerencie categorias de receitas e despesas'],
@@ -275,10 +279,10 @@ function pageMore(){
     ['security','Segurança','Bloqueio do aplicativo'],
     ['about','Sobre o KINGS',`Versão ${APP_VERSION}`]
   ];
-  return `<div class="page more-page">${header('Mais','Configurações e ferramentas')}<div class="more-list">${items.map(([key,title,sub])=>`<button class="row setting-row" style="width:100%;text-align:left" data-nav="${key}">${iconBadge(menuIcon(key),key)}<div class="row-main"><b>${title}</b><small>${sub}</small></div><span class="setting-chevron">›</span></button>`).join('')}</div></div>`;
+  return `<div class="page more-page modern-page">${header('Mais','Configurações e ferramentas')}<div class="more-list">${items.map(([key,title,sub])=>`<button class="row setting-row" style="width:100%;text-align:left" data-nav="${key}">${iconBadge(menuIcon(key),key)}<div class="row-main"><b>${title}</b><small>${sub}</small></div><span class="setting-chevron">›</span></button>`).join('')}</div></div>`;
 }
 function pageSettings(){
-  return `<div class="page settings-page">${header('Configurações',`KINGS ${APP_VERSION}`)}
+  return `<div class="page settings-page modern-page">${header('Configurações',`KINGS ${APP_VERSION}`)}
     <div class="settings-grid">
       <button class="setting-tile" data-nav="categories">${iconBadge('▣','categories')}<span><b>Categorias</b><small>Gerencie categorias</small></span><i>›</i></button>
       <button class="setting-tile" data-nav="accounts">${iconBadge('▤','accounts')}<span><b>Contas</b><small>Contas e cartões</small></span><i>›</i></button>
@@ -292,18 +296,18 @@ function pageSettings(){
   </div>`;
 }
 function pageAccounts(){
-  return `<div class="page">${header('Contas','Gerencie suas contas e cartões')}<div class="settings-list">${data.accounts.map((x,i)=>`<div class="row setting-row">${iconBadge('▤','accounts')}<div class="row-main"><b>${esc(x)}</b><small>Conta disponível para lançamentos</small></div><button class="mini action-delete" data-action="deleteAccount" data-index="${i}">Excluir</button></div>`).join('')||'<div class="empty">Nenhuma conta cadastrada.</div>'}</div><button class="save" data-action="addAccount">＋ Adicionar conta</button></div>`;
+  return `<div class="page modern-page settings-subpage">${header('Contas','Gerencie suas contas e cartões')}<div class="settings-list">${data.accounts.map((x,i)=>`<div class="row setting-row">${iconBadge('▤','accounts')}<div class="row-main"><b>${esc(x)}</b><small>Conta disponível para lançamentos</small></div><button class="mini action-delete" data-action="deleteAccount" data-index="${i}">Excluir</button></div>`).join('')||'<div class="empty">Nenhuma conta cadastrada.</div>'}</div><button class="save" data-action="addAccount">＋ Adicionar conta</button></div>`;
 }
 function pagePayments(){
-  return `<div class="page">${header('Formas de Pagamento','Dinheiro, Pix, Cartão e outras formas')}<div class="settings-list">${data.paymentMethods.map((x,i)=>`<div class="row setting-row">${iconBadge('▣','payments')}<div class="row-main"><b>${esc(x)}</b><small>Forma de pagamento disponível</small></div><button class="mini action-delete" data-action="deletePayment" data-index="${i}">Excluir</button></div>`).join('')||'<div class="empty">Nenhuma forma cadastrada.</div>'}</div><button class="save" data-action="addPayment">＋ Adicionar forma</button></div>`;
+  return `<div class="page modern-page settings-subpage">${header('Formas de Pagamento','Dinheiro, Pix, Cartão e outras formas')}<div class="settings-list">${data.paymentMethods.map((x,i)=>`<div class="row setting-row">${iconBadge('▣','payments')}<div class="row-main"><b>${esc(x)}</b><small>Forma de pagamento disponível</small></div><button class="mini action-delete" data-action="deletePayment" data-index="${i}">Excluir</button></div>`).join('')||'<div class="empty">Nenhuma forma cadastrada.</div>'}</div><button class="save" data-action="addPayment">＋ Adicionar forma</button></div>`;
 }
 function pageBackup(){
-  return `<div class="page">${header('Backup e Restauração','Faça backup dos seus dados')}<div class="fin-card"><div class="section-title" style="margin-top:0">Backup completo</div><p class="page-sub">Exporte cortes, clientes, receitas, despesas, movimentações, categorias e configurações.</p><button class="save" data-action="export">↥ Exportar backup JSON</button><button class="save secondary" data-action="import">↧ Restaurar backup JSON</button><input id="importFile" type="file" accept="application/json" hidden></div></div>`;
+  return `<div class="page modern-page settings-subpage">${header('Backup e Restauração','Faça backup dos seus dados')}<div class="fin-card"><div class="section-title" style="margin-top:0">Backup completo</div><p class="page-sub">Exporte cortes, clientes, receitas, despesas, movimentações, categorias e configurações.</p><button class="save" data-action="export">↥ Exportar backup JSON</button><button class="save secondary" data-action="import">↧ Restaurar backup JSON</button><input id="importFile" type="file" accept="application/json" hidden></div></div>`;
 }
 function pageSecurity(){
-  return `<div class="page">${header('Segurança','Proteja o acesso e a visualização dos seus dados')}<div class="fin-card security-card"><label class="security-option"><span>${iconBadge('♙','security')}<span><b>Bloqueio do aplicativo</b><small>Solicita confirmação ao abrir o KINGS</small></span></span><input type="checkbox" data-security="appLock" ${data.security.appLock?'checked':''}></label><label class="security-option"><span>${iconBadge('◉','security')}<span><b>Ocultar valores</b><small>Esconde valores financeiros nas telas</small></span></span><input type="checkbox" data-security="hideValues" ${data.security.hideValues?'checked':''}></label></div></div>`;
+  return `<div class="page modern-page settings-subpage">${header('Segurança','Proteja o acesso e a visualização dos seus dados')}<div class="fin-card security-card"><label class="security-option"><span>${iconBadge('♙','security')}<span><b>Bloqueio do aplicativo</b><small>Solicita confirmação ao abrir o KINGS</small></span></span><input type="checkbox" data-security="appLock" ${data.security.appLock?'checked':''}></label><label class="security-option"><span>${iconBadge('◉','security')}<span><b>Ocultar valores</b><small>Esconde valores financeiros nas telas</small></span></span><input type="checkbox" data-security="hideValues" ${data.security.hideValues?'checked':''}></label></div></div>`;
 }
-function pageAbout(){return `<div class="page">${header('Sobre o KINGS',`Versão ${APP_VERSION}`)}<div class="fin-card about-card">${iconBadge('ⓘ','about')}<h2>KINGS</h2><p class="page-sub">Sistema financeiro para controle de cortes, clientes, receitas, despesas e caixa.</p><span class="badge">${APP_VERSION}</span></div></div>`;}
+function pageAbout(){return `<div class="page modern-page settings-subpage">${header('Sobre o KINGS',`Versão ${APP_VERSION}`)}<div class="fin-card about-card">${iconBadge('ⓘ','about')}<h2>KINGS</h2><p class="page-sub">Sistema financeiro para controle de cortes, clientes, receitas, despesas e caixa.</p><span class="badge">${APP_VERSION}</span></div></div>`;}
 
 const pages={home:pageHome,cash:pageCash,expenses:pageExpenses,clients:pageClients,receivables:pageReceivables,calendar:pageCalendar,reports:pageReports,categories:pageCategories,more:pageMore,settings:pageSettings,accounts:pageAccounts,payments:pagePayments,backup:pageBackup,security:pageSecurity,about:pageAbout};
 
@@ -521,10 +525,10 @@ document.addEventListener('click', e=>{
   else if(act==='deletePayment'){const i=Number(a.dataset.index);if(confirm('Excluir esta forma de pagamento?')){data.paymentMethods.splice(i,1);persist();render();}}
   else if(act==='saveGoal'){data.goal=num(document.getElementById('goalInput')?.value);persist();alert('Meta salva.');render();}
   else if(act==='dedupe'){const before=countAll(data);data=dedupeAll(data);persist();alert(`${before-countAll(data)} duplicado(s) removido(s).`);render();}
-  else if(act==='export'){download(`kings-9.2.10-backup-${today()}.json`,JSON.stringify(data,null,2),'application/json');}
+  else if(act==='export'){download(`kings-9.2.11-backup-${today()}.json`,JSON.stringify(data,null,2),'application/json');}
   else if(act==='import')document.getElementById('importFile')?.click();
 });
 document.addEventListener('change',e=>{if(e.target.id==='importFile'&&e.target.files[0])importBackup(e.target.files[0]); if(e.target.dataset.security){data.security[e.target.dataset.security]=e.target.checked;persist();render();}});
 document.getElementById('modal')?.addEventListener('click',e=>{if(e.target.id==='modal')closeModal();});
 render();
-if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=9.2.10').catch(()=>{});
+if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=9.2.11').catch(()=>{});
