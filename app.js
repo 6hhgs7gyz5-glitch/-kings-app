@@ -1,7 +1,7 @@
 const KEY = 'kings92_data_v4';
 const OLD_KEYS = ['kings92_data_v2','kings92_data_v1','kings92_data','kings_data_v2','kings_data'];
 const LEGACY_CUTS='kings_cuts_v3', LEGACY_EXPENSES='kings_expenses_v3', LEGACY_CFG='kings_cfg_v3';
-const APP_VERSION='9.2.9';
+const APP_VERSION='9.2.10';
 
 const today = () => { const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
 const monthKey = d => String(d || '').slice(0,7);
@@ -318,20 +318,84 @@ function field(label,id,type='text',value='',extra=''){return `<div class="field
 function requireValue(id,label){const el=document.getElementById(id);if(!el||!String(el.value).trim()){alert(`Informe ${label}.`);el?.focus();return false;}return true;}
 
 function openEntry(type){
-  const title=type==='in'?'Nova Entrada':'Nova Saída';
-  const defaultDesc=type==='in'?'Entrada rápida':'Saída rápida';
-  openModal(`<h2>${title}</h2>${field('DESCRIÇÃO (OPCIONAL)','fDesc','text','')}${field('VALOR','fValue','number','','step="0.01" min="0.01" inputmode="decimal"')}${field('DATA','fDate','date',today())}<button class="save" id="modalSave">Salvar</button>`);
-  document.getElementById('modalSave').onclick=()=>{
-    if(!requireValue('fValue','o valor')||!requireValue('fDate','a data'))return;
-    const desc=document.getElementById('fDesc').value.trim()||defaultDesc;
-    const value = amountFromInput(document.getElementById('fValue'));
-    if(value <= 0){ alert('Informe um valor maior que R$ 0,00.'); document.getElementById('fValue')?.focus(); return; }
-    const saveBtn=document.getElementById('modalSave');
-    if(saveBtn.dataset.saving==='1') return;
-    saveBtn.dataset.saving='1'; saveBtn.disabled=true;
-    data.movements.push({id:uid('m'),type,desc,value,date:document.getElementById('fDate').value,createdAt:new Date().toISOString()});
-    persist();closeModal();render();
+  const isIn = type === 'in';
+  const title = isIn ? 'Venda Rápida' : 'Saída Rápida';
+  const defaultDesc = isIn ? 'Entrada rápida' : 'Saída rápida';
+  const tone = isIn ? 'quick-entry-in' : 'quick-entry-out';
+  const nowTime = () => new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  const nowDate = () => new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'}).replace('.','');
+  let digits = '';
+
+  const draw = () => {
+    const cents = Number(digits || '0');
+    const value = cents; // keypad represents whole reais, matching the quick-entry screen
+    const formatted = money(value);
+    const desc = document.getElementById('qDesc')?.value?.trim() || defaultDesc;
+    const valueEl = document.getElementById('quickAmount');
+    if(valueEl) valueEl.textContent = formatted;
+    const descEl = document.getElementById('quickDescPreview');
+    if(descEl) descEl.textContent = desc;
+    const countEl = document.getElementById('quickDescCount');
+    if(countEl) countEl.textContent = `${Math.min((desc||'').length,120)} / 120`;
+    const save = document.getElementById('quickSave');
+    if(save) save.disabled = value <= 0;
   };
+
+  openModal(`
+    <div class="quick-entry ${tone}">
+      <div class="quick-top">
+        <button class="quick-help" type="button" aria-label="Ajuda">?</button>
+        <h2>${title}</h2>
+        <button class="quick-close" data-action="closeModal" type="button" aria-label="Fechar">×</button>
+      </div>
+      <div class="quick-amount" id="quickAmount">${money(0)}</div>
+      <div class="quick-description">
+        <label for="qDesc">Descrição:</label>
+        <input id="qDesc" maxlength="120" value="${esc(defaultDesc)}" autocomplete="off">
+        <span id="quickDescPreview">${esc(defaultDesc)}</span>
+        <small id="quickDescCount">${defaultDesc.length} / 120</small>
+      </div>
+      <div class="quick-meta">
+        <div>${nowDate()}</div><div>${nowTime()}</div>
+      </div>
+      <div class="quick-keypad" aria-label="Teclado numérico">
+        ${['1','2','3','4','5','6','7','8','9','0'].map(k=>`<button type="button" class="quick-key" data-quick-key="${k}">${k}</button>`).join('')}
+        <button type="button" class="quick-key quick-back" data-quick-back="1" aria-label="Apagar">‹</button>
+      </div>
+      <button type="button" class="quick-save" id="quickSave" disabled aria-label="Salvar">${isIn?'▣':'▣'}</button>
+    </div>
+  `);
+
+  const descInput=document.getElementById('qDesc');
+  descInput?.addEventListener('input',draw);
+  document.querySelectorAll('[data-quick-key]').forEach(btn=>btn.addEventListener('click',()=>{
+    if(digits.length < 9) digits += btn.dataset.quickKey;
+    draw();
+  }));
+  document.querySelector('[data-quick-back]')?.addEventListener('click',()=>{
+    digits=digits.slice(0,-1);
+    draw();
+  });
+  document.getElementById('quickSave')?.addEventListener('click',()=>{
+    const value=Number(digits||'0');
+    if(value<=0) return;
+    const desc=descInput?.value?.trim()||defaultDesc;
+    const save=document.getElementById('quickSave');
+    if(save?.dataset.saving==='1') return;
+    if(save) { save.dataset.saving='1'; save.disabled=true; }
+    data.movements.push({
+      id:uid('m'),
+      type,
+      desc,
+      value,
+      date:today(),
+      createdAt:new Date().toISOString()
+    });
+    persist();
+    closeModal();
+    render();
+  });
+  draw();
 }
 function openClient(){
   openModal(`<h2>Novo Cliente</h2>${field('NOME','cName')}${field('TELEFONE','cPhone') }<button class="save" id="modalSave">Salvar cliente</button>`);
@@ -457,10 +521,10 @@ document.addEventListener('click', e=>{
   else if(act==='deletePayment'){const i=Number(a.dataset.index);if(confirm('Excluir esta forma de pagamento?')){data.paymentMethods.splice(i,1);persist();render();}}
   else if(act==='saveGoal'){data.goal=num(document.getElementById('goalInput')?.value);persist();alert('Meta salva.');render();}
   else if(act==='dedupe'){const before=countAll(data);data=dedupeAll(data);persist();alert(`${before-countAll(data)} duplicado(s) removido(s).`);render();}
-  else if(act==='export'){download(`kings-9.2.8-backup-${today()}.json`,JSON.stringify(data,null,2),'application/json');}
+  else if(act==='export'){download(`kings-9.2.10-backup-${today()}.json`,JSON.stringify(data,null,2),'application/json');}
   else if(act==='import')document.getElementById('importFile')?.click();
 });
 document.addEventListener('change',e=>{if(e.target.id==='importFile'&&e.target.files[0])importBackup(e.target.files[0]); if(e.target.dataset.security){data.security[e.target.dataset.security]=e.target.checked;persist();render();}});
 document.getElementById('modal')?.addEventListener('click',e=>{if(e.target.id==='modal')closeModal();});
 render();
-if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=9.2.8').catch(()=>{});
+if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=9.2.10').catch(()=>{});

@@ -88,3 +88,80 @@ button{cursor:pointer}
   .brand-mark{width:64px;height:64px}
   .brand-name{font-size:23px}
 }
+
+
+/* KINGS 9.2.10 — telas rápidas de Entrada/Saída */
+.modal:has(.quick-entry){align-items:stretch;background:#000;z-index:200;}
+.modal:has(.quick-entry) .modal-card{
+  width:100%;height:100%;max-height:none;overflow:hidden;border:0;border-radius:0;
+  padding:0;background:#08090a;
+}
+.modal:has(.quick-entry) .modal-card>.close{display:none;}
+.quick-entry{
+  min-height:100dvh;height:100%;box-sizing:border-box;color:#fff;
+  display:flex;flex-direction:column;overflow:hidden;
+  padding:max(18px,env(safe-area-inset-top)) 14px max(22px,env(safe-area-inset-bottom));
+}
+.quick-entry-in{background:#009b27;}
+.quick-entry-out{background:#c9192d;}
+.quick-top{
+  display:grid;grid-template-columns:64px 1fr 64px;align-items:center;
+  min-height:64px;
+}
+.quick-top h2{
+  margin:0;text-align:center;font-size:28px;font-weight:800;letter-spacing:-.5px;color:#fff;
+}
+.quick-help,.quick-close{
+  width:56px;height:56px;border:0;background:transparent;color:#fff;
+  font-size:50px;line-height:1;border-radius:50%;justify-self:center;
+}
+.quick-help{font-size:40px;font-weight:400;}
+.quick-amount{
+  flex:0 0 auto;text-align:center;font-size:clamp(64px,15vw,96px);
+  line-height:1;font-weight:900;letter-spacing:-3px;padding:70px 0 80px;
+}
+.quick-description{
+  position:relative;background:rgba(255,255,255,.28);border-radius:18px;
+  padding:20px 34px 38px;min-height:116px;box-sizing:border-box;
+}
+.quick-description label{display:block;font-size:22px;font-weight:700;margin-bottom:6px;}
+.quick-description input{
+  display:block;width:100%;box-sizing:border-box;border:0;outline:0;background:transparent;
+  color:#fff;font-size:29px;font-weight:600;padding:0;
+}
+.quick-description input::placeholder{color:#fff;}
+.quick-description>span{display:none;}
+.quick-description small{
+  position:absolute;right:18px;bottom:8px;font-size:17px;font-weight:700;color:#fff;
+}
+.quick-meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
+.quick-meta>div{
+  background:rgba(255,255,255,.28);border-radius:15px;padding:13px 10px;
+  text-align:center;font-size:23px;font-weight:700;
+}
+.quick-keypad{
+  flex:1;display:grid;grid-template-columns:repeat(3,1fr);
+  grid-template-rows:repeat(4,1fr);align-items:center;justify-items:center;
+  padding:18px 18px 4px;min-height:330px;
+}
+.quick-key{
+  width:100%;height:100%;border:0;background:transparent;color:#fff;
+  font-size:46px;font-weight:600;-webkit-tap-highlight-color:transparent;
+}
+.quick-back{font-size:62px;font-weight:300;}
+.quick-save{
+  position:absolute;right:18px;bottom:max(24px,env(safe-area-inset-bottom));
+  width:84px;height:84px;border:0;border-radius:50%;background:#0074bd;color:#fff;
+  font-size:42px;box-shadow:0 6px 20px #0005;
+}
+.quick-entry-out .quick-save{background:#a50f22;}
+.quick-save:disabled{opacity:.45;}
+@media(max-height:700px){
+  .quick-amount{padding:25px 0 30px;font-size:70px;}
+  .quick-description{min-height:90px;padding:13px 24px 28px;}
+  .quick-description label{font-size:18px;}
+  .quick-description input{font-size:23px;}
+  .quick-meta>div{font-size:18px;padding:9px;}
+  .quick-keypad{min-height:270px;}
+  .quick-key{font-size:38px;}
+}

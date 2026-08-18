@@ -1,13 +1,14 @@
-KINGS 9.2.9
+KINGS 9.2.10
 
 Atualizações desta versão:
-- Logo do cabeçalho sem moldura/borda e com mais espaço vertical para não ficar colada à área superior do iPhone.
-- Cabeçalho com área segura (safe-area) para reduzir sobreposição visual com horário e indicadores do sistema.
-- Ícones visuais adicionados às categorias de despesas, incluindo Aluguel, Mercadorias, Contas Fixas, Internet, Cartão, Materiais, Folha de Pagamento, Água, Energia, Transporte, Marketing, Impostos, Manutenção, Limpeza e Outros.
-- Os mesmos símbolos aparecem nas listas de despesas, relatórios e despesas por categoria.
-- Correção crítica da deduplicação: duas ou mais entradas/saídas/cortes/receitas/despesas com o mesmo valor no mesmo dia agora são preservadas como lançamentos independentes.
-- Deduplicação segura passa a usar a identidade do registro (ID), evitando apagar operações legítimas só porque possuem os mesmos dados.
-- Service worker/cache atualizado para 9.2.9 e registro versionado para forçar a atualização dos arquivos após substituição no site.
-- Dados continuam sem registros financeiros de demonstração; a deduplicação automática permanece ativa.
+- Entrada rápida e Saída rápida agora abrem em telas dedicadas, inspiradas na referência enviada.
+- Entrada rápida usa tela verde; Saída rápida usa tela vermelha.
+- Valor grande e teclado numérico próprio para lançamento rápido.
+- Descrição continua opcional e recebe um texto padrão quando deixada vazia.
+- Data e horário são mostrados na tela de lançamento.
+- O botão de salvar fica disponível somente após informar um valor maior que zero.
+- Cada toque em Salvar cria um novo movimento com ID único; repetir exatamente o mesmo valor no mesmo dia é permitido e preservado.
+- Mantidos os cálculos de Caixa, saldo, resumo mensal e movimentações recentes.
+- Service worker/cache atualizado para 9.2.10 para substituir a versão anterior.
 
 Substituição: envie todo o conteúdo deste ZIP para o diretório público do site, substituindo os arquivos antigos.
