@@ -1,7 +1,7 @@
 const KEY = 'kings92_data_v4';
 const OLD_KEYS = ['kings92_data_v2','kings92_data_v1','kings92_data','kings_data_v2','kings_data'];
 const LEGACY_CUTS='kings_cuts_v3', LEGACY_EXPENSES='kings_expenses_v3', LEGACY_CFG='kings_cfg_v3';
-const APP_VERSION='9.2.8';
+const APP_VERSION='9.2.9';
 
 const today = () => { const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
 const monthKey = d => String(d || '').slice(0,7);
@@ -80,12 +80,27 @@ function dedupe(arr, fields){
   }
   return out;
 }
+function dedupeByIdentity(arr){
+  const seen=new Set(), out=[];
+  for(const item of Array.isArray(arr)?arr:[]){
+    const id=String(item?.id||'');
+    const key=id || JSON.stringify(item);
+    if(!seen.has(key)){ seen.add(key); out.push(item); }
+  }
+  return out;
+}
 function dedupeAll(d){
+  // Clientes: nomes + telefone iguais representam o mesmo cadastro.
   d.clients=dedupe(d.clients,['name','phone']);
-  d.revenues=dedupe(d.revenues,['client','desc','value','date']);
-  d.expenses=dedupe(d.expenses,['desc','value','category','date']);
-  d.movements=dedupe(d.movements,['type','desc','value','date','sourceId']);
-  d.cuts=dedupe(d.cuts,['client','value','date','service','payment']);
+
+  // Registros financeiros NÃO podem ser deduplicados por valor/data/descrição:
+  // duas entradas de R$ 30,00 no mesmo dia são duas operações legítimas.
+  // A deduplicação segura usa o ID do registro; lançamentos vinculados também
+  // preservam o vínculo por sourceId.
+  d.revenues=dedupeByIdentity(d.revenues);
+  d.expenses=dedupeByIdentity(d.expenses);
+  d.movements=dedupeByIdentity(d.movements);
+  d.cuts=dedupeByIdentity(d.cuts);
   return d;
 }
 function removeBuiltInDemoData(d){
@@ -314,7 +329,7 @@ function openEntry(type){
     const saveBtn=document.getElementById('modalSave');
     if(saveBtn.dataset.saving==='1') return;
     saveBtn.dataset.saving='1'; saveBtn.disabled=true;
-    data.movements.push({id:uid('m'),type,desc,value,date:document.getElementById('fDate').value});
+    data.movements.push({id:uid('m'),type,desc,value,date:document.getElementById('fDate').value,createdAt:new Date().toISOString()});
     persist();closeModal();render();
   };
 }
@@ -327,10 +342,10 @@ function openCut(clientName=''){
   openModal(`<h2>Novo Corte</h2><div class="field"><label>CLIENTE</label><select id="cutClient" class="input">${opts||'<option>Cliente avulso</option>'}</select></div>${field('SERVIÇO','cutService','text','Corte')}${field('VALOR','cutValue','number','','step="0.01" min="0.01"')}${field('DATA','cutDate','date',today())}<div class="field"><label>PAGAMENTO</label><select id="cutPay" class="input"><option>Recebido</option><option>A receber</option></select></div><button class="save" id="modalSave">Salvar corte</button>`);
   document.getElementById('modalSave').onclick=()=>{
     if(!requireValue('cutValue','o valor')||!requireValue('cutService','o serviço'))return;
-    const cut={id:uid('cut'),client:document.getElementById('cutClient').value,service:document.getElementById('cutService').value.trim(),value:num(document.getElementById('cutValue').value),date:document.getElementById('cutDate').value,payment:document.getElementById('cutPay').value};
+    const cut={id:uid('cut'),client:document.getElementById('cutClient').value,service:document.getElementById('cutService').value.trim(),value:num(document.getElementById('cutValue').value),date:document.getElementById('cutDate').value,payment:document.getElementById('cutPay').value,createdAt:new Date().toISOString()};
     data.cuts.push(cut);
-    if(cut.payment==='Recebido') data.movements.push({id:uid('m'),type:'in',desc:`${cut.service} - ${cut.client}`,value:cut.value,date:cut.date,sourceId:cut.id});
-    else data.revenues.push({id:uid('r'),client:cut.client,desc:cut.service,value:cut.value,date:cut.date,status:'A receber',sourceId:cut.id});
+    if(cut.payment==='Recebido') data.movements.push({id:uid('m'),type:'in',desc:`${cut.service} - ${cut.client}`,value:cut.value,date:cut.date,sourceId:cut.id,createdAt:new Date().toISOString()});
+    else data.revenues.push({id:uid('r'),client:cut.client,desc:cut.service,value:cut.value,date:cut.date,status:'A receber',sourceId:cut.id,createdAt:new Date().toISOString()});
     persist();closeModal();render();
   };
 }
@@ -354,9 +369,9 @@ function openExpense(){
     for(let i=1;i<=n;i++){
       const due=new Date(baseDate+'T12:00:00'); due.setMonth(due.getMonth()+i-1);
       const value=(base+(i===n?remainder:0))/100;
-      const e={id:uid('e'),desc:n>1?`${desc} (${i}/${n})`:desc,value,category,date:due.toISOString().slice(0,10),status:(i===1?status:'A vencer'),installment:i,totalInstallments:n,parentId:null};
+      const e={id:uid('e'),desc:n>1?`${desc} (${i}/${n})`:desc,value,category,date:due.toISOString().slice(0,10),status:(i===1?status:'A vencer'),installment:i,totalInstallments:n,parentId:null,createdAt:new Date().toISOString()};
       data.expenses.push(e);
-      if(e.status==='Pago') data.movements.push({id:uid('m'),type:'out',desc:e.desc,value:e.value,date:e.date,sourceId:e.id});
+      if(e.status==='Pago') data.movements.push({id:uid('m'),type:'out',desc:e.desc,value:e.value,date:e.date,sourceId:e.id,createdAt:new Date().toISOString()});
     }
     persist();closeModal();render();
   };
@@ -366,9 +381,9 @@ function openRevenue(){
   openModal(`<h2>Nova Receita</h2><div class="field"><label>CLIENTE</label><input id="rClient" class="input" list="clientOptions" placeholder="Nome do cliente"><datalist id="clientOptions">${opts}</datalist></div>${field('DESCRIÇÃO (OPCIONAL)','rDesc')}${field('VALOR','rValue','number','','step="0.01" min="0.01"')}${field('VENCIMENTO','rDate','date',today())}<div class="field"><label>STATUS</label><select id="rStatus" class="input"><option>A receber</option><option>Recebida</option></select></div><button class="save" id="modalSave">Salvar receita</button>`);
   document.getElementById('modalSave').onclick=()=>{
     if(!requireValue('rClient','o cliente')||!requireValue('rValue','o valor')||!requireValue('rDate','a data'))return;
-    const r={id:uid('r'),client:document.getElementById('rClient').value.trim(),desc:document.getElementById('rDesc').value.trim()||'Receita',value:num(document.getElementById('rValue').value),date:document.getElementById('rDate').value,status:document.getElementById('rStatus').value};
+    const r={id:uid('r'),client:document.getElementById('rClient').value.trim(),desc:document.getElementById('rDesc').value.trim()||'Receita',value:num(document.getElementById('rValue').value),date:document.getElementById('rDate').value,status:document.getElementById('rStatus').value,createdAt:new Date().toISOString()};
     data.revenues.push(r);
-    if(r.status==='Recebida') data.movements.push({id:uid('m'),type:'in',desc:`${r.desc} - ${r.client}`,value:r.value,date:r.date,sourceId:r.id});
+    if(r.status==='Recebida') data.movements.push({id:uid('m'),type:'in',desc:`${r.desc} - ${r.client}`,value:r.value,date:r.date,sourceId:r.id,createdAt:new Date().toISOString()});
     persist();closeModal();render();
   };
 }
@@ -376,13 +391,13 @@ function openRevenue(){
 function markRevenue(id){
   const r=data.revenues.find(x=>x.id===id); if(!r)return;
   if(r.status==='Recebida'){r.status='A receber';data.movements=data.movements.filter(m=>m.sourceId!==id);}
-  else {r.status='Recebida';if(!data.movements.some(m=>m.sourceId===id))data.movements.push({id:uid('m'),type:'in',desc:`${r.desc} - ${r.client}`,value:r.value,date:today(),sourceId:r.id});}
+  else {r.status='Recebida';if(!data.movements.some(m=>m.sourceId===id))data.movements.push({id:uid('m'),type:'in',desc:`${r.desc} - ${r.client}`,value:r.value,date:today(),sourceId:r.id,createdAt:new Date().toISOString()});}
   persist();render();
 }
 function markExpense(id){
   const e=data.expenses.find(x=>x.id===id);if(!e)return;
   if(e.status==='Pago'){e.status='A vencer';data.movements=data.movements.filter(m=>m.sourceId!==id);}
-  else {e.status='Pago';if(!data.movements.some(m=>m.sourceId===id))data.movements.push({id:uid('m'),type:'out',desc:e.desc,value:e.value,date:today(),sourceId:e.id});}
+  else {e.status='Pago';if(!data.movements.some(m=>m.sourceId===id))data.movements.push({id:uid('m'),type:'out',desc:e.desc,value:e.value,date:today(),sourceId:e.id,createdAt:new Date().toISOString()});}
   persist();render();
 }
 function remove(type,id){
