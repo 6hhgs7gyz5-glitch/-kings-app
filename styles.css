@@ -187,3 +187,48 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.12;ba
 .more-page .more-list{border-radius:18px;border-color:#293231;background:#050707;box-shadow:0 10px 25px #0007}.more-page .more-list .row{min-height:74px;background:#101515}.more-page .row-main b{font-size:14px}.more-page .row-main small{font-size:10px}.setting-icon{width:42px;height:42px;border-radius:12px;font-size:19px}.setting-chevron{font-size:28px}.settings-grid{gap:10px}.setting-tile{border-radius:17px;padding:15px;background:linear-gradient(145deg,#111616,#0b0e0e);border-color:#293231;min-height:70px}.setting-tile b{font-size:14px}.setting-tile small{font-size:10px}.setting-tile i{font-size:28px}.settings-subpage .save{margin-top:14px}.security-option{padding:18px}.about-card{padding:34px}.chart{border-bottom-color:#2d3534}.bar{box-shadow:0 0 12px var(--glow-green)}.bar.r{box-shadow:0 0 12px var(--glow-red)}.installment-preview{border-radius:15px;background:#0b1d13;border-color:#1b6138}.actions .mini{border-radius:11px;padding:8px 11px}.mini.action-paid{background:#092d1a;color:#72f2a4;border-color:#14783f}.mini.action-delete{background:#351116;color:#ff747c;border-color:#8e2c37}.mini.action-primary{background:#0b2238;color:#69baff;border-color:#1d69a3}
 @media(max-width:600px){#app{max-width:100%}.topbar{min-height:112px;padding-left:14px;padding-right:14px;grid-template-columns:58px 1fr 58px}.icon-btn{width:54px;height:54px}.brand-mark{width:78px;height:78px}.brand-name{font-size:28px}.brand-sub{font-size:7.5px;letter-spacing:3px}.page,.home-page{padding-left:16px;padding-right:16px}.home-metric{padding-left:72px}.home-metric .metric-icon{left:22px}.home-metric b{font-size:21px}.home-balance .balance-value{font-size:39px}.balance-crown{right:22px;font-size:75px}.profit-chart{display:none}.home-q{min-height:116px}.bottom-nav{height:92px}.bottom-nav button span{font-size:24px}}
 @media(max-width:390px){.brand-mark{width:68px;height:68px}.brand-name{font-size:24px}.brand-sub{font-size:6.5px}.home-metric{padding-left:62px}.home-metric .metric-icon{left:15px;width:42px;height:42px;font-size:23px}.home-metric b{font-size:18px}.home-balance .balance-value{font-size:34px}.home-summary{gap:7px}.home-summary>div{padding:12px 10px}.home-summary b{font-size:15px}}
+
+/* KINGS 9.2.12 — saldo simplificado e tipografia reduzida */
+.home-balance{min-height:145px;padding:20px 22px;margin-top:14px;display:flex;flex-direction:column;justify-content:center;text-align:left}
+.home-balance .balance-label{font-size:13px;letter-spacing:.2px}
+.home-balance .balance-value{font-size:34px;margin-top:7px;line-height:1.05}
+.balance-crown{right:28px;top:50%;font-size:58px;transform:translateY(-50%) rotate(-10deg)}
+.balance-line,.profit-label,.profit-row,.profit-chart{display:none}
+.home-heading h1{font-size:22px}
+.home-heading>div>div{font-size:12px}
+.home-metric{min-height:92px;padding:16px 16px 15px 72px}
+.home-metric .metric-icon{left:20px;top:25px;width:42px;height:42px;font-size:24px}
+.home-metric small{font-size:13px}
+.home-metric b{font-size:20px;margin-top:6px}
+.home-quick-title{font-size:16px;margin:22px 0 8px}
+.home-q{min-height:100px;font-size:15px;padding:13px 8px}
+.home-q span{width:46px;height:46px;font-size:30px;margin-bottom:8px}
+.home-summary-title{font-size:16px;margin:20px 0 8px}
+.home-summary span{font-size:11px}
+.home-summary b{font-size:15px}
+.home-recent-title,.section-title{font-size:20px;margin-top:22px}
+.home-page .row{padding:13px 14px}
+.home-page .row-main b{font-size:14px}
+.home-page .row-main small{font-size:10px}
+.home-page .row-price{font-size:15px}
+.home-page .row-icon{width:42px;height:42px;font-size:23px}
+.home-page .danger-mini{width:42px;height:42px;font-size:21px}
+.page-title{font-size:28px}
+.metric b{font-size:20px}
+@media(max-width:600px){
+  .home-balance{min-height:132px;padding:18px 20px}
+  .home-balance .balance-value{font-size:31px}
+  .balance-crown{right:20px;font-size:50px}
+  .home-metric{min-height:84px;padding-left:64px}
+  .home-metric .metric-icon{left:15px;top:21px;width:38px;height:38px;font-size:22px}
+  .home-metric b{font-size:18px}
+  .home-metric small{font-size:12px}
+  .home-q{min-height:92px;font-size:14px}
+  .home-q span{width:42px;height:42px;font-size:28px}
+}
+@media(max-width:390px){
+  .home-balance .balance-value{font-size:28px}
+  .home-metric{padding-left:58px}
+  .home-metric .metric-icon{left:12px;width:36px;height:36px}
+  .home-metric b{font-size:17px}
+}
