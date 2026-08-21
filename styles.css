@@ -30,7 +30,7 @@ button{cursor:pointer}
 .drawer{position:fixed;inset:0;background:#000b;display:none;z-index:60}.drawer.open{display:block}.drawer-card{width:min(330px,88vw);height:100%;background:#111315;border-right:1px solid #303438;padding:18px}.drawer-card .drawer-title{font-size:28px;font-weight:950;margin:10px 0 22px}.drawer-card button:not(.close){display:block;width:100%;text-align:left;border:0;border-bottom:1px solid #262a2d;background:none;color:#eee;padding:15px 5px;font-weight:850}.close{float:right;width:34px;height:34px;border-radius:50%;border:1px solid #41464a;background:#202326;color:#fff;font-size:21px}
 .modal{position:fixed;inset:0;background:#000b;display:none;align-items:flex-end;z-index:70}.modal.open{display:flex}.modal-card{width:min(700px,100%);max-height:92vh;overflow:auto;background:#151719;border:1px solid #303437;border-radius:24px 24px 0 0;padding:18px}.modal-card h2{margin:0 0 16px;font-size:24px}.field{margin:12px 0}.field label{display:block;color:#999fa3;font-size:11px;font-weight:900;letter-spacing:1.5px;margin-bottom:6px}.field input,.field select{width:100%;background:#202326;border:1px solid #373c40;color:#fff;border-radius:12px;padding:12px;outline:0}.save{width:100%;border:0;background:var(--orange);color:#fff;border-radius:13px;padding:14px;font-weight:950;margin-top:8px}
 .table-card{background:#111315;border:1px solid #2f3336;border-radius:20px;padding:14px}.metric-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.metric{background:#1a1d1f;border-radius:13px;padding:12px}.metric span{display:block;color:#979da1;font-size:11px;font-weight:850}.metric b{display:block;font-size:21px;margin-top:5px}
-.calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;background:#2a2d30;border:1px solid #33373a}.cal-head,.cal-cell{background:#0e1011;padding:7px;min-height:54px;font-size:10px}.cal-head{min-height:auto;text-align:center;color:#8d9498;font-weight:900}.cal-cell b{font-size:12px}.cal-cell .pill{display:block;margin-top:5px;border-radius:5px;padding:3px;font-size:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pill.in{background:#174b30;color:#6de3a0}.pill.out{background:#4b1c20;color:#ff7d83}
+.calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:2px;background:#2a2d30;border:1px solid #33373a;width:100%;max-width:100%;overflow:hidden}.cal-head,.cal-cell{background:#0e1011;padding:7px;min-height:54px;font-size:10px;min-width:0;box-sizing:border-box}.cal-head{min-height:auto;text-align:center;color:#8d9498;font-weight:900}.cal-cell{cursor:pointer;overflow:hidden}.cal-cell b{font-size:12px;display:block;margin-bottom:2px}.cal-events{display:flex;flex-direction:column;gap:4px;min-width:0}.cal-cell .pill{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:0;width:100%;box-sizing:border-box;margin-top:0;border-radius:6px;padding:3px 2px;font-size:clamp(6px,1.9vw,9px);line-height:1.12;white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;word-break:normal;text-align:center}.cal-cell .pill small{font-size:.9em;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}.cal-cell .pill strong{font-size:1em;font-weight:900;white-space:normal;overflow-wrap:anywhere}.pill.in{background:#174b30;color:#6de3a0}.pill.out{background:#4b1c20;color:#ff7d83}
 .chart{height:180px;display:flex;align-items:flex-end;gap:6px;border-bottom:1px solid #35393c;padding:0 5px;margin-top:15px}.bar{flex:1;background:var(--green);border-radius:6px 6px 1px 1px;min-height:3px}.bar.r{background:var(--red)}
 .more-list .row{padding:15px}.more-list .row b{font-size:15px}.more-list .row small{font-size:10px}
 .empty{text-align:center;color:#888;padding:30px 10px}.empty strong{display:block;color:#ddd;font-size:17px;margin-bottom:6px}
@@ -191,3 +191,22 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.12;ba
 /* Correção de largura do calendário no iPhone: impede que o conteúdo de uma célula force a grade para fora da tela. */
 .calendar-page{min-width:0;overflow-x:hidden}.calendar-page .calendar{min-width:0}.calendar-page .cal-head,.calendar-page .cal-cell{min-width:0;}
 @media(max-width:600px){.calendar-page .calendar{width:100%;grid-template-columns:repeat(7,minmax(0,1fr));}.calendar-page .cal-head,.calendar-page .cal-cell{padding:8px 5px;min-height:68px;}.calendar-page .cal-cell b{font-size:12px}.calendar-page .cal-cell .pill{font-size:7px;padding:3px 4px;}}
+
+/* KINGS 9.2.14 — calendário: valores completos e pendências visíveis */
+.calendar-detail{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:14px 12px;margin:8px 0;border-radius:10px;border-left:4px solid currentColor;background:#15191b}
+.calendar-detail span{font-weight:800;color:#ddd}.calendar-detail b{font-size:18px;white-space:nowrap}
+.calendar-detail.in{color:#19d66b;background:#09281a}.calendar-detail.out{color:#ff4b57;background:#2d1013}
+.calendar-detail.pay{color:#f5b82e;background:#2c220c}.calendar-detail.recv{color:#4da3ff;background:#0c2034}
+@media(max-width:480px){
+  .calendar{gap:1px}
+  .cal-head,.cal-cell{padding:6px 2px}
+  .cal-cell{min-height:78px}
+  .cal-cell b{font-size:11px}
+  .cal-cell .pill{padding:3px 1px;min-height:25px}
+  .cal-cell .pill small{font-size:6px}
+  .cal-cell .pill strong{font-size:7px;letter-spacing:-.2px}
+}
+@media(min-width:481px){
+  .cal-cell{min-height:92px}
+  .cal-cell .pill{min-height:28px}
+}

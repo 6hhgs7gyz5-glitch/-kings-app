@@ -249,6 +249,20 @@ function clientStats(c){
 }
 function clientRows(arr){return arr.map(c=>{const s=clientStats(c);return `<div class="row finance-row client-row"><div class="row-icon client-icon">♙</div><div class="row-main"><b>${esc(c.name)}</b><small>${esc(c.phone||'')}<br>Total gasto: ${money(s.spent)}</small><div class="actions"><button class="mini action-primary" data-action="addCut" data-client="${esc(c.name)}">Novo corte</button><button class="mini action-delete" data-action="deleteClient" data-id="${c.id}">Excluir</button></div></div><div style="text-align:right"><small class="${s.open?'red':'green'}">${s.open?'Em aberto':'✓'}</small><div class="row-price ${s.open?'red':'green'}">${money(s.open)}</div></div></div>`;}).join('')||`<div class="empty">Nenhum cliente cadastrado.</div>`;}
 
+function openCalendarDay(ds){
+  const incoming=data.movements.filter(x=>x.type==='in'&&x.date===ds).reduce((a,x)=>a+num(x.value),0);
+  const outgoing=data.movements.filter(x=>x.type==='out'&&x.date===ds).reduce((a,x)=>a+num(x.value),0);
+  const payable=data.expenses.filter(x=>x.status!=='Pago'&&x.date===ds).reduce((a,x)=>a+num(x.value),0);
+  const receivable=data.revenues.filter(x=>x.status!=='Recebida'&&x.date===ds).reduce((a,x)=>a+num(x.value),0);
+  const details=[
+    incoming?`<div class="calendar-detail in"><span>Recebidos</span><b>${money(incoming)}</b></div>`:'',
+    outgoing?`<div class="calendar-detail out"><span>Saídas</span><b>${money(outgoing)}</b></div>`:'',
+    payable?`<div class="calendar-detail pay"><span>A pagar</span><b>${money(payable)}</b></div>`:'',
+    receivable?`<div class="calendar-detail recv"><span>A receber</span><b>${money(receivable)}</b></div>`:''
+  ].join('');
+  openModal(`<h2>${brDate(ds)}</h2>${details||'<div class="empty">Nenhum lançamento neste dia.</div>'}<button class="save" id="calendarClose">Fechar</button>`);
+  document.getElementById('calendarClose')?.addEventListener('click',closeModal);
+}
 function pageCalendar(){
   const now=new Date(); const y=now.getFullYear(),m=now.getMonth(); const first=new Date(y,m,1).getDay(); const days=new Date(y,m+1,0).getDate();
   let cells=''; ['DOM','SEG','TER','QUA','QUI','SEX','SÁB'].forEach(x=>cells+=`<div class="cal-head">${x}</div>`);
@@ -260,7 +274,13 @@ function pageCalendar(){
     const payable=data.expenses.filter(x=>x.status!=='Pago'&&x.date===ds).reduce((a,x)=>a+num(x.value),0);
     const receivable=data.revenues.filter(x=>x.status!=='Recebida'&&x.date===ds).reduce((a,x)=>a+num(x.value),0);
     const cls=ds===today()?' today':'';
-    cells+=`<div class="cal-cell${cls}"><b>${d}</b>${ins?`<span class="pill in">Recebido ${money(ins)}</span>`:''}${outs?`<span class="pill out">Saída ${money(outs)}</span>`:''}${payable?`<span class="pill pay">A pagar ${money(payable)}</span>`:''}${receivable?`<span class="pill recv">A receber ${money(receivable)}</span>`:''}</div>`;
+    const events=[];
+    if(ins) events.push({kind:'in',label:'Recebido',value:ins});
+    if(outs) events.push({kind:'out',label:'Saída',value:outs});
+    if(payable) events.push({kind:'pay',label:'A pagar',value:payable});
+    if(receivable) events.push({kind:'recv',label:'A receber',value:receivable});
+    const pills=events.map(ev=>`<span class="pill ${ev.kind}" title="${ev.label} ${money(ev.value)}"><small>${ev.label}</small><strong>${money(ev.value)}</strong></span>`).join('');
+    cells+=`<div class="cal-cell${cls}" data-action="calendarDay" data-date="${ds}"><b>${d}</b><div class="cal-events">${pills}</div></div>`;
   }
   return `<div class="page modern-page calendar-page">${header('Calendário','Recebidos, saídas, contas a pagar e a receber')}<div class="calendar-legend"><span><i class="dot in"></i>Recebidos</span><span><i class="dot out"></i>Saídas</span><span><i class="dot pay"></i>A pagar</span><span><i class="dot recv"></i>A receber</span></div><div class="calendar">${cells}</div></div>`;
 }
@@ -517,6 +537,7 @@ document.addEventListener('click', e=>{
   else if(act==='deleteExpense'&&confirm('Excluir esta despesa?'))remove('expenses',a.dataset.id);
   else if(act==='deleteClient'&&confirm('Excluir este cliente? Os cortes e receitas serão mantidos.'))remove('clients',a.dataset.id);
   else if(act==='deleteMovement'&&confirm('Excluir esta movimentação?'))remove('movements',a.dataset.id);
+  else if(act==='calendarDay')openCalendarDay(a.dataset.date);
   else if(act==='expenseFilter'){expenseFilter=a.dataset.filter;render();}
   else if(act==='revenueFilter'){revenueFilter=a.dataset.filter;render();}
   else if(act==='addAccount'){const name=prompt('Nome da conta ou cartão:');if(name&&name.trim())addSimpleItem('account',name.trim());}
@@ -525,10 +546,10 @@ document.addEventListener('click', e=>{
   else if(act==='deletePayment'){const i=Number(a.dataset.index);if(confirm('Excluir esta forma de pagamento?')){data.paymentMethods.splice(i,1);persist();render();}}
   else if(act==='saveGoal'){data.goal=num(document.getElementById('goalInput')?.value);persist();alert('Meta salva.');render();}
   else if(act==='dedupe'){const before=countAll(data);data=dedupeAll(data);persist();alert(`${before-countAll(data)} duplicado(s) removido(s).`);render();}
-  else if(act==='export'){download(`kings-9.2.11-backup-${today()}.json`,JSON.stringify(data,null,2),'application/json');}
+  else if(act==='export'){download(`kings-9.2.14-backup-${today()}.json`,JSON.stringify(data,null,2),'application/json');}
   else if(act==='import')document.getElementById('importFile')?.click();
 });
 document.addEventListener('change',e=>{if(e.target.id==='importFile'&&e.target.files[0])importBackup(e.target.files[0]); if(e.target.dataset.security){data.security[e.target.dataset.security]=e.target.checked;persist();render();}});
 document.getElementById('modal')?.addEventListener('click',e=>{if(e.target.id==='modal')closeModal();});
 render();
-if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=9.2.11').catch(()=>{});
+if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js?v=9.2.14').catch(()=>{});
