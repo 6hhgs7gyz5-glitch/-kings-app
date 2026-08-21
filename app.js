@@ -194,7 +194,8 @@ function pageHome(){
     </div>
     <section class="home-balance">
       <div class="balance-label">Saldo Disponível</div><div class="balance-value ${t.balance>=0?'green':'red'}">${money(t.balance)}</div>
-      <div class="balance-crown">♛</div>
+      <div class="balance-crown">♛</div><div class="balance-line"></div>
+      <div class="profit-label">Lucro do Mês</div><div class="profit-row"><b class="green">${money(mt.profit)}</b><div class="profit-chart"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><button data-nav="reports">↗</button></div>
     </section>
     <div class="home-quick-title">Atalhos Rápidos</div>
     <div class="home-quick">
